@@ -48,7 +48,7 @@
             <div class="text-center mb-8 relative z-10">
                 <div class="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg shadow-emerald-500/30 rotate-3"><i class="fas fa-wallet -rotate-3"></i></div>
                 <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">DompetKu</h1>
-                <p class="text-xs text-gray-500 mt-1.5 font-bold uppercase tracking-widest">Akses Aman</p>
+                <p class="text-xs text-gray-500 mt-1.5 font-bold uppercase tracking-widest">MANAJEMEN KEUANGAN PRIBADI</p>
             </div>
             <form id="form-login" onsubmit="handleLogin(event)" class="relative z-10">
                 <div class="mb-4 relative group">
@@ -169,7 +169,7 @@
                     <h2 class="text-xl font-bold text-gray-700">Laporan Rekor</h2>
                     <p class="text-[10px] text-gray-400 italic">Dihitung per bulan</p>
                 </div>
-                
+
                 <h3 class="font-bold text-emerald-600 mb-2 px-1 text-sm"><i class="fas fa-arrow-down mr-1"></i> Rekor Pemasukan</h3>
                 <div class="grid grid-cols-2 gap-3 mb-6">
                     <div class="bg-white border border-gray-100 shadow-sm p-4 rounded-xl relative group">
@@ -185,7 +185,7 @@
                         <p id="rep-inc-low-val" class="text-emerald-500 font-bold text-sm">Rp 0</p>
                     </div>
                 </div>
-                
+
                 <h3 class="font-bold text-red-500 mb-2 px-1 text-sm"><i class="fas fa-arrow-up mr-1"></i> Rekor Pengeluaran</h3>
                 <div class="grid grid-cols-2 gap-3">
                     <div class="bg-white border border-gray-100 shadow-sm p-4 rounded-xl relative group">
@@ -214,8 +214,8 @@
                         <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fas fa-bullseye text-emerald-600 mr-1"></i> Batas Pengeluaran Maksimal</label>
                         <div class="relative"><span class="absolute left-4 top-3 text-gray-500 font-bold">Rp</span><input type="number" id="input-budget-limit" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-12 pr-4 outline-none focus:border-emerald-500 font-semibold"></div>
                     </div>
-                    
-                    <h3 class="font-bold text-gray-700 mb-3 text-sm mt-6 border-t border-gray-100 pt-5"><i class="fas fa-lock text-emerald-500 mr-2"></i>Keamanan (Tersimpan di Sheet)</h3>
+
+                    <h3 class="font-bold text-gray-700 mb-3 text-sm mt-6 border-t border-gray-100 pt-5"><i class="fas fa-lock text-emerald-500 mr-2"></i>Keamanan</h3>
                     <p class="text-xs text-gray-400 mb-4">Isi hanya jika ingin mengubah akses login Anda.</p>
                     <div class="mb-4">
                         <label class="block text-xs font-bold text-gray-500 mb-1.5">Username Baru</label>
@@ -291,17 +291,17 @@
         // Variabel Otentikasi & Setting
         let isLoggedIn = localStorage.getItem('is_logged_in') === 'true';
         let budgetLimit = localStorage.getItem('budget_limit') || 0;
-        let appName = localStorage.getItem('app_name') || 'DompetKu'; 
-        
+        let appName = localStorage.getItem('app_name') || 'DompetKu';
+
         // ===== LINK GOOGLE APPS SCRIPT =====
         const GAS_URL = "https://script.google.com/macros/s/AKfycbz_MCzzsMpERC5qncLZxpIod6fz-gblYieJNp9gGNeaK9nRSXfuaTNDGxEOsOy4wJBO5A/exec";
         const isGAS = typeof google !== 'undefined' && google.script;
 
         // Data & State Pagination
-        let transactionsData = []; 
-        let debtsData = []; 
-        let expenseChartInstance = null; 
-        
+        let transactionsData = [];
+        let debtsData = [];
+        let expenseChartInstance = null;
+
         let historySort = 'date_desc'; let historyPage = 1; let debtSort = 'date_desc'; let debtPage = 1; const itemsPerPage = 15;
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
@@ -317,7 +317,7 @@
             const modal = document.getElementById('modal-global'); const content = document.getElementById('modal-global-content');
             const iconContainer = document.getElementById('modal-global-icon-container'); const icon = document.getElementById('modal-global-icon');
             const btnAlertOk = document.getElementById('btn-global-ok');
-            
+
             document.getElementById('modal-global-title').innerText = title; document.getElementById('modal-global-message').innerText = message;
             document.getElementById('modal-global-btn-confirm').classList.add('hidden'); document.getElementById('modal-global-btn-alert').classList.remove('hidden');
 
@@ -342,7 +342,7 @@
             iconContainer.className = "w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 bg-orange-50 text-orange-500";
             icon.className = "fas fa-question-circle";
             btnYes.innerText = confirmBtnText; btnYes.className = `flex-1 py-3.5 rounded-xl text-white font-bold active:scale-95 transition-all shadow-lg ${btnColorClass}`;
-            
+
             globalConfirmAction = actionCallback;
             modal.classList.remove('hidden'); setTimeout(() => content.classList.remove('scale-95'), 10);
         }
@@ -366,7 +366,7 @@
                         localStorage.setItem('is_logged_in', 'true'); isLoggedIn = true; hideLoading();
                         document.getElementById('login-screen').classList.add('-translate-y-full', 'opacity-0');
                         setTimeout(() => { document.getElementById('login-screen').classList.add('hidden'); document.getElementById('main-app').classList.remove('hidden'); document.getElementById('form-login').reset(); setupAppData(); }, 500);
-                    }, 1000); 
+                    }, 1000);
                 } else { hideLoading(); showCustomAlert('Login Gagal', 'Username atau Password salah!', 'error'); }
             };
             const failCb = () => { hideLoading(); showCustomAlert('Koneksi Gagal', 'Gagal terhubung ke server!', 'error'); }
@@ -381,7 +381,7 @@
                     localStorage.setItem('is_logged_in', 'false'); isLoggedIn = false; hideLoading();
                     document.getElementById('main-app').classList.add('hidden');
                     document.getElementById('login-screen').classList.remove('hidden', '-translate-y-full', 'opacity-0');
-                    switchTab('home'); 
+                    switchTab('home');
                 }, 2000);
             });
         }
@@ -391,12 +391,12 @@
             const newU = document.getElementById('input-username').value; const newP = document.getElementById('input-password').value;
             localStorage.setItem('budget_limit', limit); localStorage.setItem('app_name', name);
             budgetLimit = limit; appName = name; document.getElementById('app-title-display').innerText = appName;
-            
+
             if (newU || newP) {
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyimpan...';
                 const credData = { username: newU, password: newP };
                 const cb = () => {
-                    showCustomAlert('Berhasil Tersimpan', 'Pengaturan dan Kredensial Login berhasil diperbarui ke Sheet.', 'success'); 
+                    showCustomAlert('Berhasil Tersimpan', 'Pengaturan dan Kredensial Login berhasil diperbarui ke Sheet.', 'success');
                     document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
                     document.getElementById('input-username').value = ''; document.getElementById('input-password').value = ''; processData(transactionsData);
                 };
@@ -410,7 +410,7 @@
         function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + tabId).classList.add('active'); if(tabId !== 'account') { document.querySelectorAll('.nav-btn').forEach(btn => { if(btn.dataset.target === tabId) btn.classList.replace('text-gray-400', 'text-emerald-600'); else if(btn.dataset.target) btn.classList.replace('text-emerald-600', 'text-gray-400'); }); } else { document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.replace('text-emerald-600', 'text-gray-400')); } }
         function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); }
         function formatDate(dateString) { if(!dateString) return '-'; const date = new Date(dateString); return isNaN(date) ? dateString : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); }
-        
+
         function openModal() { document.getElementById('modal-add').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-content').classList.remove('translate-y-full'), 10); }
         function closeModal() { document.getElementById('modal-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-add').classList.add('hidden'); document.getElementById('form-transaction').reset(); document.getElementById('input-date').valueAsDate = new Date(); document.getElementById('edit-id').value = ''; document.getElementById('modal-title').innerText = 'Catat Transaksi'; toggleCustomCategory(); }, 300); }
         function openDebtModal() { document.getElementById('debt-date').valueAsDate = new Date(); document.getElementById('modal-debt').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-debt-content').classList.remove('translate-y-full'), 10); }
@@ -418,10 +418,10 @@
 
         function setupAppData() { document.getElementById('input-date').valueAsDate = new Date(); fetchData(); }
         function syncError() { document.getElementById('sync-status').innerHTML = '<i class="fas fa-times text-red-300"></i> Error'; }
-        
+
         function fetchData() {
             document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Sinkron...';
-            if (isGAS) { google.script.run.withSuccessHandler(processData).withFailureHandler(syncError).getTransactions(); google.script.run.withSuccessHandler(processDebts).withFailureHandler(syncError).getDebts(); } 
+            if (isGAS) { google.script.run.withSuccessHandler(processData).withFailureHandler(syncError).getTransactions(); google.script.run.withSuccessHandler(processDebts).withFailureHandler(syncError).getDebts(); }
             else if (GAS_URL !== "") { fetch(`${GAS_URL}?action=getTransactions`).then(res => res.json()).then(processData).catch(syncError); fetch(`${GAS_URL}?action=getDebts`).then(res => res.json()).then(processDebts).catch(syncError); }
         }
 
@@ -441,7 +441,7 @@
             if (paginatedData.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">Data kosong pada filter ini.</div>`; document.getElementById('debt-pagination').classList.add('hidden'); } else {
                 let html = '';
                 paginatedData.forEach(debt => {
-                    const isLunas = debt.status === 'Lunas'; 
+                    const isLunas = debt.status === 'Lunas';
                     const buttonAction = isLunas ? `<span class="text-[10px] text-gray-400 font-medium flex items-center gap-1"><i class="fas fa-check-double text-emerald-500"></i> ${formatDate(debt.paidDate)}</span>` : `<button onclick="markAsPaid('${debt.id}')" class="text-xs bg-emerald-500 text-white px-3 py-1.5 rounded shadow-sm hover:bg-emerald-600"><i class="fas fa-hand-holding-usd"></i> Lunas</button>`;
                     html += `<div class="flex items-center justify-between p-4 border-b border-gray-50 ${isLunas ? 'opacity-60 bg-gray-50' : 'bg-white'}"><div class="flex items-center gap-3 overflow-hidden flex-1"><div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isLunas ? 'bg-emerald-50 text-emerald-500' : 'bg-orange-50 text-orange-500'}"><i class="fas ${isLunas ? 'fa-check-circle' : 'fa-user-clock'}"></i></div><div class="truncate"><p class="font-bold text-gray-800 truncate ${isLunas ? 'line-through decoration-gray-400' : ''}">${debt.name}</p><p class="text-[10px] text-gray-500">${formatDate(debt.date)} ${debt.note ? '• '+debt.note : ''}</p></div></div><div class="flex flex-col items-end flex-shrink-0 ml-2 gap-1.5"><p class="font-bold text-gray-800">${formatRupiah(debt.amount)}</p>${buttonAction}</div>${!isLunas ? `<button onclick="deleteDebt('${debt.id}')" class="ml-3 text-red-300 hover:text-red-500"><i class="fas fa-trash text-xs"></i></button>` : ''}</div>`;
                 });
@@ -454,18 +454,18 @@
             transactionsData = data || []; document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
             const currM = new Date().getMonth(), currY = new Date().getFullYear(); let prevM = currM - 1, prevY = currY; if (prevM < 0) { prevM = 11; prevY--; }
             let currInc = 0, currExp = 0, prevInc = 0, prevExp = 0; let currTrx = [];
-            
+
             transactionsData.forEach(trx => { const d = new Date(trx.date); const amt = Number(trx.amount); if (d.getMonth() === currM && d.getFullYear() === currY) { if (trx.type === 'Pemasukan') currInc += amt; else currExp += amt; currTrx.push(trx); } else if (d.getMonth() === prevM && d.getFullYear() === prevY) { if (trx.type === 'Pemasukan') prevInc += amt; else prevExp += amt; } });
-            
+
             document.getElementById('total-balance').innerText = formatRupiah(currInc - currExp); document.getElementById('total-income').innerText = formatRupiah(currInc);
             const expEl = document.getElementById('total-expense'), warnEl = document.getElementById('budget-warning'); expEl.innerText = formatRupiah(currExp);
             if (budgetLimit > 0 && currExp > budgetLimit) { expEl.classList.add('text-red-300'); warnEl.classList.remove('hidden'); } else { expEl.classList.remove('text-red-300'); warnEl.classList.add('hidden'); }
-            
+
             document.getElementById('prev-income-text').innerText = formatRupiah(prevInc); document.getElementById('prev-expense-text').innerText = formatRupiah(prevExp);
             const insIncEl = document.getElementById('insight-income'), insExpEl = document.getElementById('insight-expense'), iconExpEl = document.getElementById('insight-expense-icon');
             if (prevInc === 0 && currInc === 0) insIncEl.innerText = "Belum ada pemasukan."; else if (currInc > prevInc) insIncEl.innerHTML = "Pemasukan bulan ini <b>lebih besar</b>, pertahankan!"; else if (currInc < prevInc) insIncEl.innerHTML = "Pemasukan bulan ini <b>lebih sedikit</b>, ayo semangat!"; else insIncEl.innerText = "Pemasukan stabil.";
             if (prevExp === 0 && currExp === 0) { insExpEl.innerText = "Belum ada pengeluaran."; iconExpEl.className = "w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center flex-shrink-0 mt-0.5"; } else if (currExp > prevExp) { insExpEl.innerHTML = "Pengeluaran bulan ini <b>lebih besar</b>, tolong hemat!"; iconExpEl.className = "w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center flex-shrink-0 mt-0.5"; } else if (currExp < prevExp) { insExpEl.innerHTML = "Pengeluaran bulan ini <b>lebih sedikit</b>, pengelolaan yang bagus!"; iconExpEl.className = "w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5"; } else { insExpEl.innerText = "Pengeluaran stabil."; iconExpEl.className = "w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5"; }
-            
+
             renderChart(currTrx); renderTransactionList(); generateReports();
         }
 
@@ -493,7 +493,7 @@
         function submitTransaction(e) {
             e.preventDefault(); const btn = document.getElementById('btn-submit'); btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
             let catValue = document.getElementById('input-category').value; if (catValue === 'Lainnya') catValue = document.getElementById('input-category-custom').value;
-            const editId = document.getElementById('edit-id').value; 
+            const editId = document.getElementById('edit-id').value;
             const data = { id: editId || null, type: document.querySelector('input[name="type"]:checked').value, amount: document.getElementById('input-amount').value, category: catValue, date: document.getElementById('input-date').value, note: document.getElementById('input-note').value };
             const cb = () => { btn.innerHTML = 'Simpan'; btn.disabled = false; closeModal(); fetchData(); };
             if (isGAS) { if (editId) google.script.run.withSuccessHandler(cb).updateTransaction(data); else google.script.run.withSuccessHandler(cb).saveTransaction(data); } else if (GAS_URL !== "") fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: editId ? 'updateTransaction' : 'saveTransaction', data: data }) }).then(cb);
@@ -501,7 +501,7 @@
 
         function editTransaction(id) {
             const trx = transactionsData.find(t => t.id == id); if(!trx) return;
-            document.getElementById('edit-id').value = trx.id; document.getElementById('modal-title').innerText = 'Edit Transaksi'; document.querySelector(`input[name="type"][value="${trx.type}"]`).checked = true; document.getElementById('input-amount').value = trx.amount; 
+            document.getElementById('edit-id').value = trx.id; document.getElementById('modal-title').innerText = 'Edit Transaksi'; document.querySelector(`input[name="type"][value="${trx.type}"]`).checked = true; document.getElementById('input-amount').value = trx.amount;
             const catSelect = document.getElementById('input-category'); const customInput = document.getElementById('input-category-custom');
             let isStandardOption = Array.from(catSelect.options).some(opt => opt.value === trx.category);
             if (isStandardOption) { catSelect.value = trx.category; customInput.classList.add('hidden'); customInput.value = ''; } else { catSelect.value = 'Lainnya'; customInput.classList.remove('hidden'); customInput.value = trx.category; }
@@ -540,10 +540,10 @@
         function resetReport(metric) {
             const metricNames = { 'inc_high': 'Pemasukan Terbesar', 'inc_low': 'Pemasukan Terkecil', 'exp_high': 'Pengeluaran Boros', 'exp_low': 'Pengeluaran Hemat' };
             showCustomConfirm(
-                `Reset Rekor ${metricNames[metric]}?`, 
-                'Rekor ini akan dikosongkan ke Rp 0 dan mulai dicatat ulang dari transaksi yang masuk mulai saat ini. (Tidak akan menghapus data riwayat asli Anda)', 
-                'Ya, Reset', 
-                'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30', 
+                `Reset Rekor ${metricNames[metric]}?`,
+                'Rekor ini akan dikosongkan ke Rp 0 dan mulai dicatat ulang dari transaksi yang masuk mulai saat ini. (Tidak akan menghapus data riwayat asli Anda)',
+                'Ya, Reset',
+                'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30',
                 () => {
                     localStorage.setItem('reset_rep_' + metric, Date.now());
                     showCustomAlert('Berhasil Di-reset', `Rekor ${metricNames[metric]} mulai dilacak ulang.`, 'success');
@@ -563,8 +563,8 @@
         }
 
         function generateReports() {
-            if(transactionsData.length === 0) return; 
-            
+            if(transactionsData.length === 0) return;
+
             // Ambil waktu reset masing-masing rekor dari LocalStorage
             const resets = {
                 inc_high: Number(localStorage.getItem('reset_rep_inc_high')) || 0,
@@ -574,16 +574,16 @@
             };
 
             const dataAgg = { inc_high: {}, inc_low: {}, exp_high: {}, exp_low: {} };
-            
-            transactionsData.forEach(trx => { 
-                const d = new Date(trx.date); if(isNaN(d)) return; 
-                
+
+            transactionsData.forEach(trx => {
+                const d = new Date(trx.date); if(isNaN(d)) return;
+
                 // Gunakan timestamp akurat (saat trx dibuat) untuk perbandingan reset, atau gunakan tanggal sebagai fallback
                 const trxTime = trx.timestamp ? new Date(trx.timestamp).getTime() : d.getTime();
-                const key = d.getFullYear() + "-" + d.getMonth(); 
+                const key = d.getFullYear() + "-" + d.getMonth();
                 const label = monthNames[d.getMonth()] + " " + d.getFullYear();
-                const amt = Number(trx.amount); 
-                
+                const amt = Number(trx.amount);
+
                 // Hanya hitung data yang dibuat SETELAH waktu reset untuk setiap kategori
                 if(trx.type === 'Pemasukan') {
                     if (trxTime >= resets.inc_high) { if(!dataAgg.inc_high[key]) dataAgg.inc_high[key] = { label: label, val: 0 }; dataAgg.inc_high[key].val += amt; }
@@ -595,18 +595,18 @@
             });
 
             let hiInc = { label: '-', val: -1 }, loInc = { label: '-', val: Infinity }, hiExp = { label: '-', val: -1 }, loExp = { label: '-', val: Infinity };
-            
+
             for(let key in dataAgg.inc_high) { if(dataAgg.inc_high[key].val > hiInc.val) hiInc = dataAgg.inc_high[key]; }
             for(let key in dataAgg.inc_low) { if(dataAgg.inc_low[key].val < loInc.val && dataAgg.inc_low[key].val > 0) loInc = dataAgg.inc_low[key]; }
             for(let key in dataAgg.exp_high) { if(dataAgg.exp_high[key].val > hiExp.val) hiExp = dataAgg.exp_high[key]; }
             for(let key in dataAgg.exp_low) { if(dataAgg.exp_low[key].val < loExp.val && dataAgg.exp_low[key].val > 0) loExp = dataAgg.exp_low[key]; }
-            
-            if(loInc.val === Infinity) loInc.val = 0; if(loExp.val === Infinity) loExp.val = 0; 
+
+            if(loInc.val === Infinity) loInc.val = 0; if(loExp.val === Infinity) loExp.val = 0;
             if(hiInc.val === -1) hiInc.val = 0; if(hiExp.val === -1) hiExp.val = 0;
-            
-            document.getElementById('rep-inc-high-month').innerText = hiInc.label; document.getElementById('rep-inc-high-val').innerText = formatRupiah(hiInc.val); 
-            document.getElementById('rep-inc-low-month').innerText = loInc.label; document.getElementById('rep-inc-low-val').innerText = formatRupiah(loInc.val); 
-            document.getElementById('rep-exp-high-month').innerText = hiExp.label; document.getElementById('rep-exp-high-val').innerText = formatRupiah(hiExp.val); 
+
+            document.getElementById('rep-inc-high-month').innerText = hiInc.label; document.getElementById('rep-inc-high-val').innerText = formatRupiah(hiInc.val);
+            document.getElementById('rep-inc-low-month').innerText = loInc.label; document.getElementById('rep-inc-low-val').innerText = formatRupiah(loInc.val);
+            document.getElementById('rep-exp-high-month').innerText = hiExp.label; document.getElementById('rep-exp-high-val').innerText = formatRupiah(hiExp.val);
             document.getElementById('rep-exp-low-month').innerText = loExp.label; document.getElementById('rep-exp-low-val').innerText = formatRupiah(loExp.val);
         }
     </script>
