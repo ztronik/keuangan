@@ -257,6 +257,7 @@
                         <label class="block text-sm font-semibold mb-1.5">Kategori</label>
                         <select id="input-category" onchange="toggleCustomCategory()" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 outline-none focus:border-emerald-500">
                             <option value="Pemasukan">💰 Pemasukan</option>
+                            <option value="Pengeluaran">💸 Pengeluaran</option>
                             <option value="Makanan">🍔 Makanan</option>
                             <option value="Transportasi">🚗 Transport</option>
                             <option value="Belanja">🛍️ Belanja</option>
@@ -308,6 +309,9 @@
         window.onload = () => {
             if (isLoggedIn) { document.getElementById('login-screen').classList.add('hidden'); document.getElementById('main-app').classList.remove('hidden'); setupAppData(); }
             document.getElementById('input-budget-limit').value = budgetLimit > 0 ? budgetLimit : ''; document.getElementById('input-app-name').value = appName; document.getElementById('app-title-display').innerText = appName; document.getElementById('current-month-title').innerText = "Bulan " + monthNames[new Date().getMonth()] + " " + new Date().getFullYear();
+            document.querySelectorAll('input[name="type"]').forEach(radio => {
+                radio.addEventListener('change', syncCategoryToType);
+            });
         };
 
         // --- SISTEM POPUP CUSTOM (ALERT & CONFIRM) ---
@@ -407,12 +411,14 @@
 
         // --- FETCH DATA & UI DASAR ---
         function toggleCustomCategory() { const catSelect = document.getElementById('input-category').value; const customInput = document.getElementById('input-category-custom'); if (catSelect === 'Lainnya') { customInput.classList.remove('hidden'); customInput.required = true; } else { customInput.classList.add('hidden'); customInput.required = false; customInput.value = ''; } }
+
         function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + tabId).classList.add('active'); if(tabId !== 'account') { document.querySelectorAll('.nav-btn').forEach(btn => { if(btn.dataset.target === tabId) btn.classList.replace('text-gray-400', 'text-emerald-600'); else if(btn.dataset.target) btn.classList.replace('text-emerald-600', 'text-gray-400'); }); } else { document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.replace('text-emerald-600', 'text-gray-400')); } }
         function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); }
         function formatDate(dateString) { if(!dateString) return '-'; const date = new Date(dateString); return isNaN(date) ? dateString : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); }
 
-        function openModal() { document.getElementById('modal-add').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-content').classList.remove('translate-y-full'), 10); }
-        function closeModal() { document.getElementById('modal-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-add').classList.add('hidden'); document.getElementById('form-transaction').reset(); document.getElementById('input-date').valueAsDate = new Date(); document.getElementById('edit-id').value = ''; document.getElementById('modal-title').innerText = 'Catat Transaksi'; toggleCustomCategory(); }, 300); }
+        function syncCategoryToType() { const activeType = document.querySelector('input[name="type"]:checked'); const cat = document.getElementById('input-category'); if (activeType) cat.value = (activeType.value === 'Pemasukan') ? 'Pemasukan' : 'Pengeluaran'; toggleCustomCategory(); }
+        function openModal() { document.getElementById('modal-add').classList.remove('hidden'); setTimeout(() => { document.getElementById('modal-content').classList.remove('translate-y-full'); syncCategoryToType(); }, 10); }
+        function closeModal() { document.getElementById('modal-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-add').classList.add('hidden'); document.getElementById('form-transaction').reset(); document.getElementById('input-date').valueAsDate = new Date(); document.getElementById('edit-id').value = ''; document.getElementById('modal-title').innerText = 'Catat Transaksi'; syncCategoryToType(); }, 300); }
         function openDebtModal() { document.getElementById('debt-date').valueAsDate = new Date(); document.getElementById('modal-debt').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-debt-content').classList.remove('translate-y-full'), 10); }
         function closeDebtModal() { document.getElementById('modal-debt-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-debt').classList.add('hidden'); document.getElementById('form-debt').reset(); }, 300); }
 
