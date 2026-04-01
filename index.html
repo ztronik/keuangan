@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         ::-webkit-scrollbar { width: 0px; background: transparent; }
+        body { overscroll-behavior: none; touch-action: pan-x pan-y; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; width: 28px; height: 28px; animation: spin 1s linear infinite; }
@@ -306,6 +307,10 @@
         let historySort = 'date_desc'; let historyPage = 1; let debtSort = 'date_desc'; let debtPage = 1; const itemsPerPage = 15;
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
+        document.addEventListener('touchmove', function(e) {
+            if (window.scrollY === 0 && e.touches[0].clientY > 0) e.preventDefault();
+        }, { passive: false });
+
         window.onload = () => {
             if (isLoggedIn) { document.getElementById('login-screen').classList.add('hidden'); document.getElementById('main-app').classList.remove('hidden'); setupAppData(); }
             document.getElementById('input-budget-limit').value = budgetLimit > 0 ? budgetLimit : ''; document.getElementById('input-app-name').value = appName; document.getElementById('app-title-display').innerText = appName; document.getElementById('current-month-title').innerText = "Bulan " + monthNames[new Date().getMonth()] + " " + new Date().getFullYear();
@@ -416,13 +421,14 @@
         function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); }
         function formatDate(dateString) { if(!dateString) return '-'; const date = new Date(dateString); return isNaN(date) ? dateString : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); }
 
+        function todayLocalDate() { const now = new Date(); return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0'); }
         function syncCategoryToType() { const activeType = document.querySelector('input[name="type"]:checked'); const cat = document.getElementById('input-category'); if (activeType) cat.value = (activeType.value === 'Pemasukan') ? 'Pemasukan' : 'Pengeluaran'; toggleCustomCategory(); }
         function openModal() { document.getElementById('modal-add').classList.remove('hidden'); setTimeout(() => { document.getElementById('modal-content').classList.remove('translate-y-full'); syncCategoryToType(); }, 10); }
-        function closeModal() { document.getElementById('modal-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-add').classList.add('hidden'); document.getElementById('form-transaction').reset(); document.getElementById('input-date').valueAsDate = new Date(); document.getElementById('edit-id').value = ''; document.getElementById('modal-title').innerText = 'Catat Transaksi'; syncCategoryToType(); }, 300); }
-        function openDebtModal() { document.getElementById('debt-date').valueAsDate = new Date(); document.getElementById('modal-debt').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-debt-content').classList.remove('translate-y-full'), 10); }
+        function closeModal() { document.getElementById('modal-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-add').classList.add('hidden'); document.getElementById('form-transaction').reset(); document.getElementById('input-date').value = todayLocalDate(); document.getElementById('edit-id').value = ''; document.getElementById('modal-title').innerText = 'Catat Transaksi'; syncCategoryToType(); }, 300); }
+        function openDebtModal() { document.getElementById('debt-date').value = todayLocalDate(); document.getElementById('modal-debt').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-debt-content').classList.remove('translate-y-full'), 10); }
         function closeDebtModal() { document.getElementById('modal-debt-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-debt').classList.add('hidden'); document.getElementById('form-debt').reset(); }, 300); }
 
-        function setupAppData() { document.getElementById('input-date').valueAsDate = new Date(); fetchData(); }
+        function setupAppData() { document.getElementById('input-date').value = todayLocalDate(); fetchData(); }
         function syncError() { document.getElementById('sync-status').innerHTML = '<i class="fas fa-times text-red-300"></i> Error'; }
 
         function fetchData() {
