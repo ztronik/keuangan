@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>DompetKu - Z-TRONIK</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         ::-webkit-scrollbar { width: 0px; background: transparent; }
-        body { overscroll-behavior: none; touch-action: pan-x pan-y; }
+        html, body { overscroll-behavior-y: none; overscroll-behavior: none; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; width: 28px; height: 28px; animation: spin 1s linear infinite; }
@@ -306,6 +308,24 @@
 
         let historySort = 'date_desc'; let historyPage = 1; let debtSort = 'date_desc'; let debtPage = 1; const itemsPerPage = 15;
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+        // Prevent pull-to-refresh on Android WebView
+        document.addEventListener('touchstart', function(e) {
+            window._touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+            var el = e.target;
+            // Cari elemen scrollable terdekat
+            while (el && el !== document.body) {
+                if (el.scrollHeight > el.clientHeight) break;
+                el = el.parentElement;
+            }
+            var scrollable = el && el.scrollHeight > el.clientHeight ? el : document.scrollingElement || document.documentElement;
+            var atTop = scrollable.scrollTop <= 0;
+            var pullDown = e.touches[0].clientY > window._touchStartY;
+            if (atTop && pullDown) e.preventDefault();
+        }, { passive: false });
 
         window.onload = () => {
             if (isLoggedIn) { document.getElementById('login-screen').classList.add('hidden'); document.getElementById('main-app').classList.remove('hidden'); setupAppData(); }
