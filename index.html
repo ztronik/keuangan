@@ -268,10 +268,11 @@
                         <label class="block text-sm font-semibold mb-1.5">Kategori</label>
                         <select id="input-category" onchange="toggleCustomCategory()" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 outline-none focus:border-emerald-500">
                             <option value="Pengeluaran">💸 Pengeluaran</option>
+                            <option value="Makanan & Minuman">🍽️ Makanan &amp; Minuman</option>
                             <option value="Jajan">🍔 Jajan</option>
                             <option value="Keperluan Anak">👶 Keperluan Anak</option>
                             <option value="Keperluan Dapur">🍳 Keperluan Dapur</option>
-                            <option value="Keperluan Cuci">🧺 Keperluan Cuci</option>
+                            <option value="Keperluan Cuci dan Mandi">🧺 Keperluan Cuci dan Mandi</option>
                             <option value="Berobat">💊 Berobat</option>
                             <option value="Donasi">🤲 Donasi</option>
                             <option value="Transportasi">🚗 Transportasi</option>
@@ -447,10 +448,11 @@
         const categoryOptions = {
             Pengeluaran: [
                 { value: 'Pengeluaran', label: '💸 Pengeluaran' },
+                { value: 'Makanan & Minuman', label: '🍽️ Makanan & Minuman' },
                 { value: 'Jajan', label: '🍔 Jajan' },
                 { value: 'Keperluan Anak', label: '👶 Keperluan Anak' },
                 { value: 'Keperluan Dapur', label: '🍳 Keperluan Dapur' },
-                { value: 'Keperluan Cuci', label: '🧺 Keperluan Cuci' },
+                { value: 'Keperluan Cuci dan Mandi', label: '🧺 Keperluan Cuci dan Mandi' },
                 { value: 'Berobat', label: '💊 Berobat' },
                 { value: 'Donasi', label: '🤲 Donasi' },
                 { value: 'Transportasi', label: '🚗 Transportasi' },
@@ -531,7 +533,7 @@
             const currM = new Date().getMonth(), currY = new Date().getFullYear(); let prevM = currM - 1, prevY = currY; if (prevM < 0) { prevM = 11; prevY--; }
             let currInc = 0, currExp = 0, prevInc = 0, prevExp = 0; let currTrx = [];
 
-            transactionsData.forEach(trx => { const d = new Date(trx.date); const amt = Number(trx.amount); if (d.getMonth() === currM && d.getFullYear() === currY) { if (trx.type === 'Pemasukan') currInc += amt; else currExp += amt; currTrx.push(trx); } else if (d.getMonth() === prevM && d.getFullYear() === prevY) { if (trx.type === 'Pemasukan') prevInc += amt; else prevExp += amt; } });
+            transactionsData.forEach(trx => { const d = new Date(trx.date); const amt = Number(trx.amount); const isRekap = trx.category === 'Rekap Sistem'; if (d.getMonth() === currM && d.getFullYear() === currY) { if (!isRekap) { if (trx.type === 'Pemasukan') currInc += amt; else currExp += amt; } currTrx.push(trx); } else if (d.getMonth() === prevM && d.getFullYear() === prevY) { if (!isRekap) { if (trx.type === 'Pemasukan') prevInc += amt; else prevExp += amt; } } });
 
             document.getElementById('total-balance').innerText = formatRupiah(currInc - currExp); document.getElementById('total-income').innerText = formatRupiah(currInc);
             const expEl = document.getElementById('total-expense'), warnEl = document.getElementById('budget-warning'); expEl.innerText = formatRupiah(currExp);
