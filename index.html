@@ -870,56 +870,88 @@
             <div class="footer">© ${new Date().getFullYear()} ${appNameVal} · Z-TRONIK · Laporan dibuat otomatis</div>
             </body></html>`;
 
-            // Buat elemen sementara untuk dirender html2pdf
-            const container = document.createElement('div');
-            container.innerHTML = html;
-            // Ambil hanya bagian <body> dari HTML string
-            const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/i);
-            container.innerHTML = bodyMatch ? bodyMatch[1] : html;
-            container.style.cssText = "font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1f2937;padding:28px 32px;width:700px;position:absolute;left:-9999px;top:0;";
-            document.body.appendChild(container);
-
-            // Terapkan inline style agar html2pdf merender dengan benar
-            container.querySelectorAll('.header').forEach(el => { el.style.cssText = 'text-align:center;margin-bottom:24px;padding-bottom:18px;border-bottom:2px solid #10b981;'; });
-            container.querySelectorAll('.header h1').forEach(el => { el.style.cssText = 'font-size:22px;font-weight:800;color:#059669;letter-spacing:0.5px;'; });
-            container.querySelectorAll('.period-badge').forEach(el => { el.style.cssText = 'display:inline-block;background:#ecfdf5;color:#059669;font-size:12px;font-weight:700;padding:4px 14px;border-radius:20px;border:1px solid #6ee7b7;margin-top:8px;'; });
-            container.querySelectorAll('.section-title.exp').forEach(el => { el.style.cssText = 'font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px;margin-bottom:10px;background:#fef2f2;color:#ef4444;'; });
-            container.querySelectorAll('.section-title.inc').forEach(el => { el.style.cssText = 'font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px;margin-bottom:10px;background:#ecfdf5;color:#059669;'; });
-            container.querySelectorAll('table').forEach(el => { el.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;'; });
-            container.querySelectorAll('th').forEach(el => { el.style.cssText = 'background:#f9fafb;font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;padding:8px 10px;text-align:left;border-bottom:1px solid #e5e7eb;'; });
-            container.querySelectorAll('tr').forEach(el => { el.style.borderBottom = '1px solid #f3f4f6'; });
-            container.querySelectorAll('.total-row td').forEach(el => { el.style.cssText = 'font-weight:700;background:#f9fafb;border-top:2px solid #e5e7eb;'; });
-            container.querySelectorAll('.footer').forEach(el => { el.style.cssText = 'text-align:center;margin-top:28px;font-size:10px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:12px;'; });
-
+            // Render HTML ke iframe tersembunyi, lalu screenshot via html2canvas → jsPDF
             showLoading('Membuat PDF...');
 
-            if (typeof html2pdf === 'undefined') {
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-                script.onload = () => doRender();
-                script.onerror = () => { hideLoading(); document.body.removeChild(container); showCustomAlert('Gagal', 'Gagal memuat library PDF. Periksa koneksi internet Anda.', 'error'); };
-                document.head.appendChild(script);
-            } else { doRender(); }
-
             function doRender() {
-                const fileName = `Laporan_Ranking_${periodLabel.replace(' ', '_')}.pdf`;
-                const opt = {
-                    margin: [10, 10, 10, 10],
-                    filename: fileName,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-                html2pdf().set(opt).from(container).save().then(() => {
-                    hideLoading();
-                    document.body.removeChild(container);
-                    showCustomAlert('Berhasil!', `PDF "${fileName}" berhasil diunduh.`, 'success');
-                }).catch(err => {
-                    hideLoading();
-                    document.body.removeChild(container);
-                    showCustomAlert('Gagal', 'Terjadi kesalahan saat membuat PDF: ' + err, 'error');
-                });
+                const fileName = `Laporan_Ranking_${periodLabel.replace(/ /g, '_')}.pdf`;
+
+                // Buat iframe tersembunyi agar CSS di dalam html bisa diterapkan penuh
+                const iframe = document.createElement('iframe');
+                iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1px;border:none;visibility:hidden;';
+                document.body.appendChild(iframe);
+
+                const idoc = iframe.contentDocument || iframe.contentWindow.document;
+                idoc.open();
+                idoc.write(html);
+                idoc.close();
+
+                // Tunggu iframe selesai render
+                setTimeout(() => {
+                    const target = idoc.body;
+                    const h = target.scrollHeight;
+                    iframe.style.height = h + 'px';
+
+                    html2canvas(target, {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: '#ffffff',
+                        width: 794,
+                        windowWidth: 794,
+                        scrollY: 0,
+                        scrollX: 0
+                    }).then(canvas => {
+                        document.body.removeChild(iframe);
+                        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF({ unit: 'px', format: 'a4', orientation: 'portrait' });
+                        const pageW = pdf.internal.pageSize.getWidth();
+                        const pageH = pdf.internal.pageSize.getHeight();
+                        const imgW = pageW;
+                        const imgH = (canvas.height * pageW) / canvas.width;
+                        let yPos = 0;
+                        let remaining = imgH;
+                        let firstPage = true;
+                        while (remaining > 0) {
+                            if (!firstPage) pdf.addPage();
+                            pdf.addImage(imgData, 'JPEG', 0, -yPos, imgW, imgH);
+                            yPos += pageH;
+                            remaining -= pageH;
+                            firstPage = false;
+                        }
+                        pdf.save(fileName);
+                        hideLoading();
+                        showCustomAlert('Berhasil!', `PDF "${fileName}" berhasil diunduh.`, 'success');
+                    }).catch(err => {
+                        document.body.removeChild(iframe);
+                        hideLoading();
+                        showCustomAlert('Gagal', 'Gagal membuat PDF: ' + err, 'error');
+                    });
+                }, 800);
             }
+
+            // Muat html2canvas + jsPDF jika belum ada
+            function loadScript(src, cb) {
+                if (document.querySelector(`script[src="${src}"]`)) { cb(); return; }
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = cb;
+                s.onerror = () => { hideLoading(); showCustomAlert('Gagal', 'Gagal memuat library. Periksa koneksi internet.', 'error'); };
+                document.head.appendChild(s);
+            }
+
+            const h2cSrc = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            const jsPDFSrc = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+
+            if (typeof html2canvas === 'undefined') {
+                loadScript(h2cSrc, () => {
+                    if (typeof window.jspdf === 'undefined') {
+                        loadScript(jsPDFSrc, doRender);
+                    } else { doRender(); }
+                });
+            } else if (typeof window.jspdf === 'undefined') {
+                loadScript(jsPDFSrc, doRender);
+            } else { doRender(); }
         }
 
         function generateReports() {
