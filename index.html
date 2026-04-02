@@ -18,6 +18,8 @@
         .loader-large { border: 4px solid #e5e7eb; border-top: 4px solid #10b981; border-radius: 50%; width: 48px; height: 48px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .bg-login-gradient { background: linear-gradient(135deg, #059669 0%, #14b8a6 50%, #0891b2 100%); }
+        /* Paksa donut chart selalu rata kiri dengan ukuran konsisten */
+        #expenseChart, #incomeChart { display: block; }
     </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col font-sans text-gray-800 overflow-hidden relative">
@@ -111,17 +113,23 @@
 
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4 relative">
                     <h3 class="font-bold text-gray-700 mb-3 text-sm flex items-center gap-2"><i class="fas fa-chart-pie text-emerald-500"></i> Grafik Pengeluaran</h3>
-                    <div class="relative w-full h-48 flex items-center justify-center">
-                        <canvas id="expenseChart"></canvas>
-                        <div id="no-chart-data" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hidden bg-white z-10"><i class="fas fa-box-open text-3xl mb-2 opacity-50"></i><span class="text-xs font-medium">Belum ada pengeluaran</span></div>
+                    <div class="flex items-center gap-4">
+                        <div class="relative flex-shrink-0" style="width:160px;height:160px;">
+                            <canvas id="expenseChart"></canvas>
+                            <div id="no-chart-data" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hidden bg-white z-10"><i class="fas fa-box-open text-3xl mb-2 opacity-50"></i><span class="text-xs font-medium">Belum ada pengeluaran</span></div>
+                        </div>
+                        <div id="expense-legend" class="flex flex-col gap-1.5 flex-1 min-w-0"></div>
                     </div>
                 </div>
 
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4 relative">
                     <h3 class="font-bold text-gray-700 mb-3 text-sm flex items-center gap-2"><i class="fas fa-chart-pie text-blue-500"></i> Grafik Pemasukan</h3>
-                    <div class="relative w-full h-48 flex items-center justify-center">
-                        <canvas id="incomeChart"></canvas>
-                        <div id="no-income-chart-data" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hidden bg-white z-10"><i class="fas fa-box-open text-3xl mb-2 opacity-50"></i><span class="text-xs font-medium">Belum ada pemasukan</span></div>
+                    <div class="flex items-center gap-4">
+                        <div class="relative flex-shrink-0" style="width:160px;height:160px;">
+                            <canvas id="incomeChart"></canvas>
+                            <div id="no-income-chart-data" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hidden bg-white z-10"><i class="fas fa-box-open text-3xl mb-2 opacity-50"></i><span class="text-xs font-medium">Belum ada pemasukan</span></div>
+                        </div>
+                        <div id="income-legend" class="flex flex-col gap-1.5 flex-1 min-w-0"></div>
                     </div>
                 </div>
             </div>
@@ -792,24 +800,38 @@
             );
         }
 
+        // Render legend sebagai HTML di luar canvas agar posisi donut tidak bergeser
+        function renderHtmlLegend(legendEl, labels, colors) {
+            legendEl.innerHTML = labels.map((label, i) =>
+                `<div class="flex items-center gap-2 min-w-0">
+                    <span class="flex-shrink-0 w-2.5 h-2.5 rounded-sm" style="background:${colors[i % colors.length]}"></span>
+                    <span class="text-[11px] text-gray-600 font-medium truncate">${label}</span>
+                </div>`
+            ).join('');
+        }
+
         function renderChart(currTrx) {
             const ctx = document.getElementById('expenseChart').getContext('2d'); const noDataEl = document.getElementById('no-chart-data');
             const expenses = currTrx.filter(t => t.type === 'Pengeluaran' && t.category !== 'Rekap Sistem');
-            if (expenses.length === 0) { if (expenseChartInstance) expenseChartInstance.destroy(); noDataEl.classList.remove('hidden'); document.getElementById('expenseChart').classList.add('hidden'); return; }
+            if (expenses.length === 0) { if (expenseChartInstance) expenseChartInstance.destroy(); noDataEl.classList.remove('hidden'); document.getElementById('expenseChart').classList.add('hidden'); document.getElementById('expense-legend').innerHTML = ''; return; }
             noDataEl.classList.add('hidden'); document.getElementById('expenseChart').classList.remove('hidden');
             const catTot = {}; expenses.forEach(trx => { catTot[trx.category] = (catTot[trx.category] || 0) + Number(trx.amount); });
+            const colors = ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#06b6d4', '#e879f9', '#2dd4bf'];
             if (expenseChartInstance) expenseChartInstance.destroy();
-            expenseChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(catTot), datasets: [{ data: Object.values(catTot), backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#06b6d4', '#e879f9', '#2dd4bf'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } }, cutout: '70%' } });
+            expenseChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(catTot), datasets: [{ data: Object.values(catTot), backgroundColor: colors, borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%' } });
+            renderHtmlLegend(document.getElementById('expense-legend'), Object.keys(catTot), colors);
         }
 
         function renderIncomeChart(currTrx) {
             const ctx = document.getElementById('incomeChart').getContext('2d'); const noDataEl = document.getElementById('no-income-chart-data');
             const incomes = currTrx.filter(t => t.type === 'Pemasukan' && t.category !== 'Rekap Sistem');
-            if (incomes.length === 0) { if (incomeChartInstance) incomeChartInstance.destroy(); noDataEl.classList.remove('hidden'); document.getElementById('incomeChart').classList.add('hidden'); return; }
+            if (incomes.length === 0) { if (incomeChartInstance) incomeChartInstance.destroy(); noDataEl.classList.remove('hidden'); document.getElementById('incomeChart').classList.add('hidden'); document.getElementById('income-legend').innerHTML = ''; return; }
             noDataEl.classList.add('hidden'); document.getElementById('incomeChart').classList.remove('hidden');
             const catTot = {}; incomes.forEach(trx => { catTot[trx.category] = (catTot[trx.category] || 0) + Number(trx.amount); });
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#e879f9', '#ef4444', '#2dd4bf'];
             if (incomeChartInstance) incomeChartInstance.destroy();
-            incomeChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(catTot), datasets: [{ data: Object.values(catTot), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#e879f9', '#ef4444', '#2dd4bf'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } }, cutout: '70%' } });
+            incomeChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(catTot), datasets: [{ data: Object.values(catTot), backgroundColor: colors, borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%' } });
+            renderHtmlLegend(document.getElementById('income-legend'), Object.keys(catTot), colors);
         }
 
         function renderCategoryRanks() {
