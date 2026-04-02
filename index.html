@@ -176,9 +176,37 @@
             </div>
 
             <div id="tab-reports" class="tab-content">
-                <div class="flex justify-between items-center mb-4 px-1">
+                <div class="flex justify-between items-center mb-3 px-1">
                     <h2 class="text-xl font-bold text-gray-700">Laporan Rekor</h2>
                     <p class="text-[10px] text-gray-400 italic">Dihitung per bulan</p>
+                </div>
+
+                <!-- Ranking Section dengan Dropdown & PDF -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-gray-700 text-sm flex items-center gap-1.5"><i class="fas fa-trophy text-yellow-500"></i> Ranking Kategori</h3>
+                        <div class="flex items-center gap-2">
+                            <select id="rank-month-select" onchange="renderCategoryRanks()" class="bg-gray-100 border border-gray-200 text-xs font-bold text-gray-600 rounded-lg px-2 py-1.5 outline-none cursor-pointer">
+                                <option value="current">📅 Bulan Ini</option>
+                                <option value="prev">📆 Bulan Kemarin</option>
+                            </select>
+                            <button onclick="downloadRankingPDF()" class="bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-emerald-700 active:scale-95 transition flex items-center gap-1.5 shadow-sm"><i class="fas fa-file-pdf"></i> PDF</button>
+                        </div>
+                    </div>
+                    <p id="rank-period-label" class="text-[10px] text-gray-400 font-medium mb-3 px-0.5">Periode: <span id="rank-period-text" class="font-bold text-gray-500">-</span></p>
+
+                    <div class="mb-3">
+                        <h4 class="font-bold text-red-500 mb-2 text-xs flex items-center gap-1.5 px-0.5"><i class="fas fa-list-ol"></i> Pengeluaran per Kategori</h4>
+                        <div class="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                            <div id="rank-expense-list"><div class="p-6 text-center text-gray-400 text-xs">Belum ada data.</div></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-emerald-600 mb-2 text-xs flex items-center gap-1.5 px-0.5"><i class="fas fa-list-ol"></i> Pemasukan per Kategori</h4>
+                        <div class="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                            <div id="rank-income-list"><div class="p-6 text-center text-gray-400 text-xs">Belum ada data.</div></div>
+                        </div>
+                    </div>
                 </div>
 
                 <h3 class="font-bold text-emerald-600 mb-2 px-1 text-sm"><i class="fas fa-arrow-down mr-1"></i> Rekor Pemasukan</h3>
@@ -213,19 +241,6 @@
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <h3 class="font-bold text-red-500 mb-3 px-1 text-sm flex items-center gap-2"><i class="fas fa-list-ol"></i> Pengeluaran per Kategori <span class="text-[10px] font-normal text-gray-400 normal-case ml-1">bulan ini</span></h3>
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div id="rank-expense-list"><div class="p-6 text-center text-gray-400 text-xs">Belum ada pengeluaran bulan ini.</div></div>
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <h3 class="font-bold text-emerald-600 mb-3 px-1 text-sm flex items-center gap-2"><i class="fas fa-list-ol"></i> Pemasukan per Kategori <span class="text-[10px] font-normal text-gray-400 normal-case ml-1">bulan ini</span></h3>
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div id="rank-income-list"><div class="p-6 text-center text-gray-400 text-xs">Belum ada pemasukan bulan ini.</div></div>
-                    </div>
-                </div>
             </div>
 
             <div id="tab-account" class="tab-content">
@@ -489,7 +504,7 @@
 
         function toggleCustomCategory() { const catSelect = document.getElementById('input-category').value; const customInput = document.getElementById('input-category-custom'); if (catSelect === 'Custom') { customInput.classList.remove('hidden'); customInput.required = true; } else { customInput.classList.add('hidden'); customInput.required = false; customInput.value = ''; } }
 
-        function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + tabId).classList.add('active'); if(tabId !== 'account') { document.querySelectorAll('.nav-btn').forEach(btn => { if(btn.dataset.target === tabId) btn.classList.replace('text-gray-400', 'text-emerald-600'); else if(btn.dataset.target) btn.classList.replace('text-emerald-600', 'text-gray-400'); }); } else { document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.replace('text-emerald-600', 'text-gray-400')); } }
+        function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + tabId).classList.add('active'); if(tabId !== 'account') { document.querySelectorAll('.nav-btn').forEach(btn => { if(btn.dataset.target === tabId) btn.classList.replace('text-gray-400', 'text-emerald-600'); else if(btn.dataset.target) btn.classList.replace('text-emerald-600', 'text-gray-400'); }); } else { document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.replace('text-emerald-600', 'text-gray-400')); } if(tabId === 'reports') renderCategoryRanks(); }
         function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); }
         function formatDate(dateString) { if(!dateString) return '-'; const date = new Date(dateString); return isNaN(date) ? dateString : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); }
 
@@ -508,7 +523,29 @@
         function openDebtModal() { document.getElementById('debt-date').value = todayLocalDate(); document.getElementById('modal-debt').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-debt-content').classList.remove('translate-y-full'), 10); }
         function closeDebtModal() { document.getElementById('modal-debt-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-debt').classList.add('hidden'); document.getElementById('form-debt').reset(); }, 300); }
 
-        function setupAppData() { document.getElementById('input-date').value = todayLocalDate(); fetchData(); }
+        // --- RESET NOMINAL BERANDA SETIAP TANGGAL 1 ---
+        function checkMonthlyReset() {
+            const now = new Date();
+            const currentMonthKey = now.getFullYear() + '-' + (now.getMonth() + 1);
+            const lastResetKey = localStorage.getItem('last_monthly_reset');
+            // Jika sudah masuk bulan baru dan belum direset bulan ini
+            if (lastResetKey !== currentMonthKey) {
+                // Reset dilakukan secara otomatis — data beranda (pemasukan/pengeluaran)
+                // hanya menampilkan transaksi bulan berjalan (sudah by-design di processData)
+                // Tandai bulan ini sudah "direset" agar tidak ditampilkan notif ulang
+                localStorage.setItem('last_monthly_reset', currentMonthKey);
+                // Tampilkan notif hanya jika memang bukan bulan pertama buka app
+                if (lastResetKey) {
+                    setTimeout(() => showCustomAlert('Bulan Baru! 🎉', 'Selamat datang di bulan baru! Nominal Pemasukan & Pengeluaran di Beranda telah direset. Semangat atur keuangan bulan ini!', 'success'), 1500);
+                }
+            }
+        }
+
+        function setupAppData() {
+            document.getElementById('input-date').value = todayLocalDate();
+            checkMonthlyReset();
+            fetchData();
+        }
         function syncError() { document.getElementById('sync-status').innerHTML = '<i class="fas fa-times text-red-300"></i> Error'; }
 
         function fetchData() {
@@ -668,27 +705,50 @@
         }
 
         function renderCategoryRanks() {
-            const currM = new Date().getMonth(), currY = new Date().getFullYear();
-            const expCat = {}, incCat = {};
+            const sel = document.getElementById('rank-month-select');
+            const isPrev = sel && sel.value === 'prev';
 
+            const now = new Date();
+            let targetM, targetY;
+            if (isPrev) {
+                const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                targetM = prev.getMonth();
+                targetY = prev.getFullYear();
+            } else {
+                targetM = now.getMonth();
+                targetY = now.getFullYear();
+            }
+
+            // Batasi ranking hanya 2 bulan (bulan ini dan bulan kemarin)
+            const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+            if (new Date(targetY, targetM, 1) < twoMonthsAgo) {
+                document.getElementById('rank-expense-list').innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">Data di luar batas 2 bulan.</div>';
+                document.getElementById('rank-income-list').innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">Data di luar batas 2 bulan.</div>';
+                return;
+            }
+
+            const periodLabel = monthNames[targetM] + ' ' + targetY;
+            if (document.getElementById('rank-period-text')) document.getElementById('rank-period-text').innerText = periodLabel;
+
+            const expCat = {}, incCat = {};
             transactionsData.forEach(trx => {
                 const d = new Date(trx.date);
-                if (d.getMonth() !== currM || d.getFullYear() !== currY) return;
+                if (d.getMonth() !== targetM || d.getFullYear() !== targetY) return;
                 if (trx.category === 'Rekap Sistem') return;
                 const amt = Number(trx.amount);
                 if (trx.type === 'Pengeluaran') expCat[trx.category] = (expCat[trx.category] || 0) + amt;
                 else if (trx.type === 'Pemasukan') incCat[trx.category] = (incCat[trx.category] || 0) + amt;
             });
 
-            function buildRankHTML(catObj, colorClass, bgClass, barColor) {
+            function buildRankHTML(catObj, colorClass, bgClass, emptyMsg) {
                 const entries = Object.entries(catObj).sort((a, b) => b[1] - a[1]);
-                if (entries.length === 0) return null;
+                if (entries.length === 0) return `<div class="p-6 text-center text-gray-400 text-xs">${emptyMsg}</div>`;
                 const total = entries.reduce((s, e) => s + e[1], 0);
                 const medals = ['🥇','🥈','🥉'];
                 return entries.map(([ cat, amt ], i) => {
                     const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
                     const medal = i < 3 ? medals[i] : `<span class="text-[10px] font-bold text-gray-400 w-4 text-center">${i+1}</span>`;
-                    return `<div class="px-4 py-3 border-b border-gray-50 last:border-0">
+                    return `<div class="px-4 py-3 border-b border-gray-100 last:border-0">
                         <div class="flex items-center justify-between mb-1.5">
                             <div class="flex items-center gap-2 overflow-hidden">
                                 <span class="text-base flex-shrink-0">${medal}</span>
@@ -706,11 +766,116 @@
                 }).join('');
             }
 
-            const expHTML = buildRankHTML(expCat, 'text-red-500', 'bg-red-400', 'red');
-            const incHTML = buildRankHTML(incCat, 'text-emerald-600', 'bg-emerald-400', 'emerald');
+            document.getElementById('rank-expense-list').innerHTML = buildRankHTML(expCat, 'text-red-500', 'bg-red-400', 'Belum ada pengeluaran ' + periodLabel + '.');
+            document.getElementById('rank-income-list').innerHTML = buildRankHTML(incCat, 'text-emerald-600', 'bg-emerald-400', 'Belum ada pemasukan ' + periodLabel + '.');
+        }
 
-            document.getElementById('rank-expense-list').innerHTML = expHTML || '<div class="p-6 text-center text-gray-400 text-xs">Belum ada pengeluaran bulan ini.</div>';
-            document.getElementById('rank-income-list').innerHTML = incHTML || '<div class="p-6 text-center text-gray-400 text-xs">Belum ada pemasukan bulan ini.</div>';
+        function downloadRankingPDF() {
+            const sel = document.getElementById('rank-month-select');
+            const isPrev = sel && sel.value === 'prev';
+            const now = new Date();
+            let targetM, targetY;
+            if (isPrev) {
+                const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                targetM = prev.getMonth(); targetY = prev.getFullYear();
+            } else {
+                targetM = now.getMonth(); targetY = now.getFullYear();
+            }
+            const periodLabel = monthNames[targetM] + ' ' + targetY;
+
+            const expCat = {}, incCat = {};
+            transactionsData.forEach(trx => {
+                const d = new Date(trx.date);
+                if (d.getMonth() !== targetM || d.getFullYear() !== targetY) return;
+                if (trx.category === 'Rekap Sistem') return;
+                const amt = Number(trx.amount);
+                if (trx.type === 'Pengeluaran') expCat[trx.category] = (expCat[trx.category] || 0) + amt;
+                else if (trx.type === 'Pemasukan') incCat[trx.category] = (incCat[trx.category] || 0) + amt;
+            });
+
+            const medals = ['🥇','🥈','🥉'];
+
+            function buildTableRows(catObj) {
+                const entries = Object.entries(catObj).sort((a, b) => b[1] - a[1]);
+                if (entries.length === 0) return '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:12px 0;font-size:12px;">Belum ada data.</td></tr>';
+                const total = entries.reduce((s, e) => s + e[1], 0);
+                return entries.map(([cat, amt], i) => {
+                    const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
+                    const medal = i < 3 ? medals[i] : (i + 1);
+                    return `<tr>
+                        <td style="padding:8px 10px;text-align:center;font-size:13px;">${medal}</td>
+                        <td style="padding:8px 10px;font-weight:600;font-size:13px;">${cat}</td>
+                        <td style="padding:8px 10px;text-align:right;font-size:13px;">${formatRupiah(amt)}</td>
+                        <td style="padding:8px 10px;text-align:center;font-size:12px;color:#888;">${pct}%</td>
+                    </tr>`;
+                }).join('');
+            }
+
+            const totalExp = Object.values(expCat).reduce((s, v) => s + v, 0);
+            const totalInc = Object.values(incCat).reduce((s, v) => s + v, 0);
+            const appNameVal = localStorage.getItem('app_name') || 'DompetKu';
+            const printDate = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+
+            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+            <title>Laporan Ranking ${periodLabel}</title>
+            <style>
+                * { margin:0; padding:0; box-sizing:border-box; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; background:#fff; color:#1f2937; padding:28px 32px; }
+                .header { text-align:center; margin-bottom:24px; padding-bottom:18px; border-bottom:2px solid #10b981; }
+                .header h1 { font-size:22px; font-weight:800; color:#059669; letter-spacing:0.5px; }
+                .header p { font-size:11px; color:#6b7280; margin-top:4px; }
+                .period-badge { display:inline-block; background:#ecfdf5; color:#059669; font-size:12px; font-weight:700; padding:4px 14px; border-radius:20px; border:1px solid #6ee7b7; margin-top:8px; }
+                .section { margin-bottom:24px; }
+                .section-title { font-size:13px; font-weight:700; padding:8px 12px; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+                .section-title.exp { background:#fef2f2; color:#ef4444; }
+                .section-title.inc { background:#ecfdf5; color:#059669; }
+                table { width:100%; border-collapse:collapse; font-size:13px; }
+                th { background:#f9fafb; font-size:10px; font-weight:700; text-transform:uppercase; color:#6b7280; padding:8px 10px; text-align:left; border-bottom:1px solid #e5e7eb; }
+                th:first-child, th:last-child { text-align:center; }
+                th:nth-child(3) { text-align:right; }
+                tr { border-bottom:1px solid #f3f4f6; }
+                tr:last-child { border-bottom:none; }
+                .total-row td { font-weight:700; background:#f9fafb; border-top:2px solid #e5e7eb; }
+                .footer { text-align:center; margin-top:28px; font-size:10px; color:#9ca3af; border-top:1px solid #f3f4f6; padding-top:12px; }
+                @media print { body { padding:16px; } }
+            </style></head>
+            <body>
+            <div class="header">
+                <h1>📊 ${appNameVal}</h1>
+                <p>Laporan Ranking Kategori</p>
+                <div class="period-badge">📅 ${periodLabel}</div>
+                <p style="margin-top:8px;font-size:10px;color:#9ca3af;">Dicetak: ${printDate}</p>
+            </div>
+
+            <div class="section">
+                <div class="section-title exp">🔴 Ranking Pengeluaran per Kategori</div>
+                <table>
+                    <thead><tr><th>No</th><th>Kategori</th><th style="text-align:right;">Nominal</th><th>%</th></tr></thead>
+                    <tbody>${buildTableRows(expCat)}
+                    <tr class="total-row"><td></td><td style="padding:8px 10px;">Total</td><td style="padding:8px 10px;text-align:right;">${formatRupiah(totalExp)}</td><td style="padding:8px 10px;text-align:center;">100%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title inc">🟢 Ranking Pemasukan per Kategori</div>
+                <table>
+                    <thead><tr><th>No</th><th>Kategori</th><th style="text-align:right;">Nominal</th><th>%</th></tr></thead>
+                    <tbody>${buildTableRows(incCat)}
+                    <tr class="total-row"><td></td><td style="padding:8px 10px;">Total</td><td style="padding:8px 10px;text-align:right;">${formatRupiah(totalInc)}</td><td style="padding:8px 10px;text-align:center;">100%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="footer">© ${new Date().getFullYear()} ${appNameVal} · Z-TRONIK · Laporan dibuat otomatis</div>
+            </body></html>`;
+
+            const win = window.open('', '_blank');
+            if (!win) { showCustomAlert('Gagal', 'Popup diblokir browser. Izinkan popup untuk mengunduh PDF.', 'error'); return; }
+            win.document.write(html);
+            win.document.close();
+            win.focus();
+            setTimeout(() => { win.print(); }, 600);
         }
 
         function generateReports() {
