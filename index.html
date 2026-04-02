@@ -312,7 +312,14 @@
                         </select>
                         <input type="text" id="input-category-custom" placeholder="Ketik kategori..." class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 outline-none focus:border-emerald-500 mt-2 hidden text-sm font-medium">
                     </div>
-                    <div><label class="block text-sm font-semibold mb-1.5">Tanggal</label><input type="date" id="input-date" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 outline-none focus:border-emerald-500"></div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1.5">Tanggal</label>
+                        <div class="relative">
+                            <input type="text" id="input-date-display" maxlength="10" inputmode="numeric" placeholder="dd/mm/yyyy" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-4 pr-10 outline-none focus:border-emerald-500 font-medium" oninput="handleDateInput(this)" onblur="validateDateDisplay(this)">
+                            <input type="date" id="input-date" class="absolute opacity-0 w-0 h-0 pointer-events-none" tabindex="-1">
+                            <button type="button" onclick="document.getElementById('input-date').showPicker ? document.getElementById('input-date').showPicker() : document.getElementById('input-date').click()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-500 transition outline-none" tabindex="-1"><i class="fas fa-calendar-alt"></i></button>
+                        </div>
+                    </div>
                 </div>
                 <div class="mb-8"><label class="block text-sm font-semibold mb-1.5">Catatan Tambahan</label><input type="text" id="input-note" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 outline-none focus:border-emerald-500"></div>
                 <button type="submit" id="btn-submit" class="w-full bg-emerald-600 text-white rounded-xl py-4 font-bold active:scale-95 transition-transform shadow-lg">Simpan</button>
@@ -518,6 +525,26 @@
         function formatDate(dateString) { if(!dateString) return '-'; const date = new Date(dateString); return isNaN(date) ? dateString : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); }
 
         function todayLocalDate() { const now = new Date(); return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0'); }
+        function todayDisplay() { const now = new Date(); return String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear(); }
+        function isoToDisplay(iso) { if(!iso) return ''; const p = iso.split('T')[0].split('-'); if(p.length < 3) return ''; return p[2] + '/' + p[1] + '/' + p[0]; }
+        function displayToIso(disp) { if(!disp) return ''; const p = disp.split('/'); if(p.length < 3) return ''; return p[2] + '-' + p[1] + '-' + p[0]; }
+        function handleDateInput(el) {
+            let v = el.value.replace(/\D/g,'');
+            if(v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
+            if(v.length > 5) v = v.slice(0,5) + '/' + v.slice(5);
+            el.value = v.slice(0,10);
+            const iso = displayToIso(el.value);
+            if(iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) document.getElementById('input-date').value = iso;
+        }
+        function validateDateDisplay(el) {
+            const iso = displayToIso(el.value);
+            const d = new Date(iso);
+            if(!iso || isNaN(d.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) { el.setCustomValidity('Format tanggal harus dd/mm/yyyy'); el.reportValidity(); } else { el.setCustomValidity(''); document.getElementById('input-date').value = iso; }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const hiddenDate = document.getElementById('input-date');
+            if(hiddenDate) hiddenDate.addEventListener('change', function() { document.getElementById('input-date-display').value = isoToDisplay(this.value); document.getElementById('input-date-display').setCustomValidity(''); });
+        });
         function syncCategoryToType() {
             const activeType = document.querySelector('input[name="type"]:checked');
             const cat = document.getElementById('input-category');
@@ -528,7 +555,7 @@
             toggleCustomCategory();
         }
         function openModal() { document.getElementById('modal-add').classList.remove('hidden'); setTimeout(() => { document.getElementById('modal-content').classList.remove('translate-y-full'); syncCategoryToType(); }, 10); }
-        function closeModal() { document.getElementById('modal-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-add').classList.add('hidden'); document.getElementById('form-transaction').reset(); document.getElementById('input-date').value = todayLocalDate(); document.getElementById('edit-id').value = ''; document.getElementById('modal-title').innerText = 'Catat Transaksi'; syncCategoryToType(); }, 300); }
+        function closeModal() { document.getElementById('modal-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-add').classList.add('hidden'); document.getElementById('form-transaction').reset(); document.getElementById('input-date').value = todayLocalDate(); document.getElementById('input-date-display').value = todayDisplay(); document.getElementById('input-date-display').setCustomValidity(''); document.getElementById('edit-id').value = ''; document.getElementById('modal-title').innerText = 'Catat Transaksi'; syncCategoryToType(); }, 300); }
         function openDebtModal() { document.getElementById('debt-date').value = todayLocalDate(); document.getElementById('modal-debt').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-debt-content').classList.remove('translate-y-full'), 10); }
         function closeDebtModal() { document.getElementById('modal-debt-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-debt').classList.add('hidden'); document.getElementById('form-debt').reset(); }, 300); }
 
@@ -550,21 +577,62 @@
             }
         }
 
+        // --- CACHE & OPTIMISTIC UI SYSTEM ---
+        const CACHE_KEY_TRX = 'cache_transactions';
+        const CACHE_KEY_DEBT = 'cache_debts';
+
+        function saveCache(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {} }
+        function loadCache(key) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch(e) { return null; } }
+
         function setupAppData() {
             document.getElementById('input-date').value = todayLocalDate();
+            document.getElementById('input-date-display').value = todayDisplay();
             checkMonthlyReset();
+            // Tampilkan cache dulu (instan), lalu fetch di background
+            const cachedTrx = loadCache(CACHE_KEY_TRX);
+            const cachedDebt = loadCache(CACHE_KEY_DEBT);
+            if (cachedTrx) { processData(cachedTrx, true); }
+            if (cachedDebt) { processDebts(cachedDebt, true); }
             fetchData();
         }
+
         function syncError() { document.getElementById('sync-status').innerHTML = '<i class="fas fa-times text-red-300"></i> Error'; }
 
         function fetchData() {
             document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Sinkron...';
-            if (isGAS) { google.script.run.withSuccessHandler(processData).withFailureHandler(syncError).getTransactions(); google.script.run.withSuccessHandler(processDebts).withFailureHandler(syncError).getDebts(); }
-            else if (GAS_URL !== "") { fetch(`${GAS_URL}?action=getTransactions`).then(res => res.json()).then(processData).catch(syncError); fetch(`${GAS_URL}?action=getDebts`).then(res => res.json()).then(processDebts).catch(syncError); }
+            if (isGAS) {
+                google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_TRX, d); processData(d); }).withFailureHandler(syncError).getTransactions();
+                google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_DEBT, d); processDebts(d); }).withFailureHandler(syncError).getDebts();
+            } else if (GAS_URL !== "") {
+                fetch(`${GAS_URL}?action=getTransactions`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_TRX, d); processData(d); }).catch(syncError);
+                fetch(`${GAS_URL}?action=getDebts`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_DEBT, d); processDebts(d); }).catch(syncError);
+            }
+        }
+
+        // Optimistic update: langsung ubah data lokal + UI, lalu sync background
+        function optimisticSaveTrx(newTrx) {
+            transactionsData = [newTrx, ...transactionsData];
+            saveCache(CACHE_KEY_TRX, transactionsData);
+            processData(transactionsData, true);
+        }
+        function optimisticUpdateTrx(updated) {
+            transactionsData = transactionsData.map(t => t.id === updated.id ? { ...t, ...updated } : t);
+            saveCache(CACHE_KEY_TRX, transactionsData);
+            processData(transactionsData, true);
+        }
+        function optimisticDeleteTrx(id) {
+            transactionsData = transactionsData.filter(t => t.id !== id);
+            saveCache(CACHE_KEY_TRX, transactionsData);
+            processData(transactionsData, true);
+        }
+        function optimisticSaveDebt(newDebt) {
+            debtsData = [newDebt, ...debtsData];
+            saveCache(CACHE_KEY_DEBT, debtsData);
+            processDebts(debtsData, true);
         }
 
         // --- RENDER PIUTANG ---
-        function processDebts(data) { debtsData = data || []; renderDebtList(); }
+        function processDebts(data, silent) { debtsData = data || []; renderDebtList(); if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
         function renderDebtList() {
             const container = document.getElementById('all-debts'); let totalHutang = 0;
             debtsData.forEach(d => { if(d.status !== 'Lunas') totalHutang += Number(d.amount); }); document.getElementById('total-hutang').innerText = formatRupiah(totalHutang);
@@ -588,8 +656,8 @@
         }
 
         // --- RENDER RIWAYAT ---
-        function processData(data) {
-            transactionsData = data || []; document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
+        function processData(data, silent) {
+            transactionsData = data || []; if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
             const currM = new Date().getMonth(), currY = new Date().getFullYear(); let prevM = currM - 1, prevY = currY; if (prevM < 0) { prevM = 11; prevY--; }
             let currInc = 0, currExp = 0, prevInc = 0, prevExp = 0; let currTrx = [];
 
@@ -629,12 +697,24 @@
 
         // --- CRUD ACTIONS MENGGUNAKAN POPUP CUSTOM ---
         function submitTransaction(e) {
-            e.preventDefault(); const btn = document.getElementById('btn-submit'); btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
+            e.preventDefault();
+            const dispEl = document.getElementById('input-date-display');
+            const iso = displayToIso(dispEl.value);
+            if(!iso || isNaN(new Date(iso).getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) { dispEl.setCustomValidity('Format tanggal harus dd/mm/yyyy'); dispEl.reportValidity(); return; }
+            document.getElementById('input-date').value = iso;
             let catValue = document.getElementById('input-category').value; if (catValue === 'Custom') catValue = document.getElementById('input-category-custom').value;
             const editId = document.getElementById('edit-id').value;
-            const data = { id: editId || null, type: document.querySelector('input[name="type"]:checked').value, amount: getRawNominal(document.getElementById('input-amount')), category: catValue, date: document.getElementById('input-date').value, note: document.getElementById('input-note').value };
-            const cb = () => { btn.innerHTML = 'Simpan'; btn.disabled = false; closeModal(); fetchData(); };
-            if (isGAS) { if (editId) google.script.run.withSuccessHandler(cb).updateTransaction(data); else google.script.run.withSuccessHandler(cb).saveTransaction(data); } else if (GAS_URL !== "") fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: editId ? 'updateTransaction' : 'saveTransaction', data: data }) }).then(cb);
+            const data = { id: editId || ('tmp_' + Date.now()), type: document.querySelector('input[name="type"]:checked').value, amount: getRawNominal(document.getElementById('input-amount')), category: catValue, date: iso, note: document.getElementById('input-note').value, timestamp: new Date().toISOString() };
+
+            // Optimistic: tutup modal & update UI langsung
+            closeModal();
+            if (editId) { optimisticUpdateTrx(data); } else { optimisticSaveTrx(data); }
+
+            // Sync ke server di background
+            document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyimpan...';
+            const syncCb = (res) => { fetchData(); }; // refresh dari server untuk dapat ID asli
+            if (isGAS) { if (editId) google.script.run.withSuccessHandler(syncCb).updateTransaction(data); else google.script.run.withSuccessHandler(syncCb).saveTransaction(data); }
+            else if (GAS_URL !== "") fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: editId ? 'updateTransaction' : 'saveTransaction', data: data }) }).then(res => res.json()).then(syncCb).catch(syncError);
         }
 
         function editTransaction(id) {
@@ -649,34 +729,49 @@
             // Gunakan tanggal langsung dari data (format YYYY-MM-DD) tanpa konversi timezone
             // agar tidak terjadi offset 1 hari akibat toISOString() yang selalu UTC
             const rawDate = typeof trx.date === 'string' ? trx.date.split('T')[0] : (function(){ const d = new Date(trx.date); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); })();
-            document.getElementById('input-date').value = rawDate; document.getElementById('input-note').value = trx.note || ''; openModal();
+            document.getElementById('input-date').value = rawDate; document.getElementById('input-date-display').value = isoToDisplay(rawDate); document.getElementById('input-date-display').setCustomValidity(''); document.getElementById('input-note').value = trx.note || ''; openModal();
         }
 
         function deleteTransaction(id) {
             showCustomConfirm('Hapus Transaksi', 'Apakah Anda yakin ingin menghapus transaksi ini selamanya?', 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
+                optimisticDeleteTrx(id);
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menghapus...';
-                if (isGAS) google.script.run.withSuccessHandler(fetchData).deleteTransaction(id); else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteTransaction', id: id }) }).then(fetchData);
+                if (isGAS) google.script.run.withSuccessHandler(fetchData).deleteTransaction(id);
+                else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteTransaction', id: id }) }).then(fetchData).catch(syncError);
             });
         }
 
         function submitDebt(e) {
-            e.preventDefault(); const btn = document.getElementById('btn-submit-debt'); btn.innerHTML = 'Proses...'; btn.disabled = true;
-            const data = { name: document.getElementById('debt-name').value, amount: getRawNominal(document.getElementById('debt-amount')), date: document.getElementById('debt-date').value, note: document.getElementById('debt-note').value };
-            const cb = () => { btn.innerHTML = 'Catat Piutang'; btn.disabled = false; closeDebtModal(); fetchData(); };
-            if (isGAS) google.script.run.withSuccessHandler(cb).withFailureHandler(syncError).saveDebt(data); else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'saveDebt', data: data }) }).then(cb).catch(syncError);
+            e.preventDefault();
+            const data = { id: 'tmp_' + Date.now(), name: document.getElementById('debt-name').value, amount: getRawNominal(document.getElementById('debt-amount')), date: document.getElementById('debt-date').value, note: document.getElementById('debt-note').value, status: 'Belum Lunas' };
+            closeDebtModal();
+            optimisticSaveDebt(data);
+            document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyimpan...';
+            const cb = () => { fetchData(); };
+            if (isGAS) google.script.run.withSuccessHandler(cb).withFailureHandler(syncError).saveDebt(data);
+            else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'saveDebt', data: data }) }).then(cb).catch(syncError);
         }
 
         function markAsPaid(id) {
             showCustomConfirm('Tandai Lunas', 'Uang hutang sudah Anda terima? (Otomatis menambah saldo pemasukan)', 'Terima Lunas', 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30', () => {
+                // Optimistic: update status lokal langsung
+                debtsData = debtsData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: new Date().toISOString().split('T')[0] } : d);
+                saveCache(CACHE_KEY_DEBT, debtsData);
+                processDebts(debtsData, true);
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Proses...';
-                if (isGAS) google.script.run.withSuccessHandler(fetchData).payDebt(id); else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'payDebt', id: id }) }).then(fetchData).catch(syncError);
+                if (isGAS) google.script.run.withSuccessHandler(fetchData).payDebt(id);
+                else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'payDebt', id: id }) }).then(fetchData).catch(syncError);
             });
         }
 
         function deleteDebt(id) {
             showCustomConfirm('Batalkan Kasbon', 'Hapus catatan kasbon ini dan tarik kembali riwayat pemotongannya?', 'Hapus Kasbon', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
+                debtsData = debtsData.filter(d => d.id !== id);
+                saveCache(CACHE_KEY_DEBT, debtsData);
+                processDebts(debtsData, true);
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menghapus...';
-                if (isGAS) google.script.run.withSuccessHandler(fetchData).deleteDebt(id); else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteDebt', id: id }) }).then(fetchData).catch(syncError);
+                if (isGAS) google.script.run.withSuccessHandler(fetchData).deleteDebt(id);
+                else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteDebt', id: id }) }).then(fetchData).catch(syncError);
             });
         }
 
