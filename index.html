@@ -291,7 +291,7 @@
                     <label class="flex-1 text-center cursor-pointer"><input type="radio" name="type" value="Pengeluaran" class="peer hidden" checked><div class="py-3 rounded-xl border-2 border-gray-100 peer-checked:border-red-500 peer-checked:text-red-600 font-bold shadow-sm">Pengeluaran</div></label>
                     <label class="flex-1 text-center cursor-pointer"><input type="radio" name="type" value="Pemasukan" class="peer hidden"><div class="py-3 rounded-xl border-2 border-gray-100 peer-checked:border-emerald-500 peer-checked:text-emerald-600 font-bold shadow-sm">Pemasukan</div></label>
                 </div>
-                <div class="mb-5"><label class="block text-sm font-semibold text-gray-700 mb-1.5">Nominal (Rp)</label><input type="number" id="input-amount" required class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 font-semibold text-lg outline-none focus:border-emerald-500"></div>
+                <div class="mb-5"><label class="block text-sm font-semibold text-gray-700 mb-1.5">Nominal (Rp)</label><input type="text" id="input-amount" inputmode="numeric" required placeholder="0" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 font-semibold text-lg outline-none focus:border-emerald-500" oninput="formatNominalInput(this)"></div>
                 <div class="grid grid-cols-2 gap-4 mb-5">
                     <div>
                         <label class="block text-sm font-semibold mb-1.5">Kategori</label>
@@ -325,7 +325,7 @@
             <div class="flex justify-between items-center mb-5"><h3 class="text-xl font-bold">Pinjamkan Uang</h3><button onclick="closeDebtModal()" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
             <form id="form-debt" onsubmit="submitDebt(event)">
                 <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Nama Peminjam</label><input type="text" id="debt-name" required class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-blue-500"></div>
-                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Nominal (Rp)</label><input type="number" id="debt-amount" required class="w-full bg-gray-50 border rounded-xl py-3 px-4 font-semibold text-lg outline-none focus:border-blue-500"></div>
+                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Nominal (Rp)</label><input type="text" id="debt-amount" inputmode="numeric" required placeholder="0" class="w-full bg-gray-50 border rounded-xl py-3 px-4 font-semibold text-lg outline-none focus:border-blue-500" oninput="formatNominalInput(this)"></div>
                 <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Tanggal</label><input type="date" id="debt-date" required class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-blue-500"></div>
                 <div class="mb-6"><label class="block text-sm font-semibold mb-1.5">Catatan</label><input type="text" id="debt-note" class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-blue-500"></div>
                 <button type="submit" id="btn-submit-debt" class="w-full bg-blue-600 text-white rounded-xl py-4 font-bold active:scale-95 transition-transform shadow-lg">Catat Piutang</button>
@@ -502,6 +502,15 @@
             ]
         };
 
+        // --- FORMAT NOMINAL INPUT: tampilkan titik ribuan saat mengetik ---
+        function formatNominalInput(el) {
+            var raw = el.value.replace(/\./g, '').replace(/[^0-9]/g, '');
+            el.value = raw ? Number(raw).toLocaleString('id-ID') : '';
+        }
+        function getRawNominal(el) {
+            return el.value.replace(/\./g, '').replace(/[^0-9]/g, '') || '0';
+        }
+
         function toggleCustomCategory() { const catSelect = document.getElementById('input-category').value; const customInput = document.getElementById('input-category-custom'); if (catSelect === 'Custom') { customInput.classList.remove('hidden'); customInput.required = true; } else { customInput.classList.add('hidden'); customInput.required = false; customInput.value = ''; } }
 
         function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + tabId).classList.add('active'); if(tabId !== 'account') { document.querySelectorAll('.nav-btn').forEach(btn => { if(btn.dataset.target === tabId) btn.classList.replace('text-gray-400', 'text-emerald-600'); else if(btn.dataset.target) btn.classList.replace('text-emerald-600', 'text-gray-400'); }); } else { document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.replace('text-emerald-600', 'text-gray-400')); } if(tabId === 'reports') renderCategoryRanks(); }
@@ -623,21 +632,24 @@
             e.preventDefault(); const btn = document.getElementById('btn-submit'); btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
             let catValue = document.getElementById('input-category').value; if (catValue === 'Custom') catValue = document.getElementById('input-category-custom').value;
             const editId = document.getElementById('edit-id').value;
-            const data = { id: editId || null, type: document.querySelector('input[name="type"]:checked').value, amount: document.getElementById('input-amount').value, category: catValue, date: document.getElementById('input-date').value, note: document.getElementById('input-note').value };
+            const data = { id: editId || null, type: document.querySelector('input[name="type"]:checked').value, amount: getRawNominal(document.getElementById('input-amount')), category: catValue, date: document.getElementById('input-date').value, note: document.getElementById('input-note').value };
             const cb = () => { btn.innerHTML = 'Simpan'; btn.disabled = false; closeModal(); fetchData(); };
             if (isGAS) { if (editId) google.script.run.withSuccessHandler(cb).updateTransaction(data); else google.script.run.withSuccessHandler(cb).saveTransaction(data); } else if (GAS_URL !== "") fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: editId ? 'updateTransaction' : 'saveTransaction', data: data }) }).then(cb);
         }
 
         function editTransaction(id) {
             const trx = transactionsData.find(t => t.id == id); if(!trx) return;
-            document.getElementById('edit-id').value = trx.id; document.getElementById('modal-title').innerText = 'Edit Transaksi'; document.querySelector(`input[name="type"][value="${trx.type}"]`).checked = true; document.getElementById('input-amount').value = trx.amount;
+            document.getElementById('edit-id').value = trx.id; document.getElementById('modal-title').innerText = 'Edit Transaksi'; document.querySelector(`input[name="type"][value="${trx.type}"]`).checked = true; document.getElementById('input-amount').value = Number(trx.amount).toLocaleString('id-ID');
             // Populate category dropdown based on type first
             const typeOptions = categoryOptions[trx.type] || categoryOptions['Pengeluaran'];
             const catSelect = document.getElementById('input-category'); const customInput = document.getElementById('input-category-custom');
             catSelect.innerHTML = typeOptions.map(o => '<option value="' + o.value + '">' + o.label + '</option>').join('');
             let isStandardOption = typeOptions.some(opt => opt.value === trx.category);
             if (isStandardOption) { catSelect.value = trx.category; customInput.classList.add('hidden'); customInput.value = ''; } else { catSelect.value = 'Custom'; customInput.classList.remove('hidden'); customInput.value = trx.category; }
-            document.getElementById('input-date').value = new Date(trx.date).toISOString().split('T')[0]; document.getElementById('input-note').value = trx.note || ''; openModal();
+            // Gunakan tanggal langsung dari data (format YYYY-MM-DD) tanpa konversi timezone
+            // agar tidak terjadi offset 1 hari akibat toISOString() yang selalu UTC
+            const rawDate = typeof trx.date === 'string' ? trx.date.split('T')[0] : (function(){ const d = new Date(trx.date); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); })();
+            document.getElementById('input-date').value = rawDate; document.getElementById('input-note').value = trx.note || ''; openModal();
         }
 
         function deleteTransaction(id) {
@@ -649,7 +661,7 @@
 
         function submitDebt(e) {
             e.preventDefault(); const btn = document.getElementById('btn-submit-debt'); btn.innerHTML = 'Proses...'; btn.disabled = true;
-            const data = { name: document.getElementById('debt-name').value, amount: document.getElementById('debt-amount').value, date: document.getElementById('debt-date').value, note: document.getElementById('debt-note').value };
+            const data = { name: document.getElementById('debt-name').value, amount: getRawNominal(document.getElementById('debt-amount')), date: document.getElementById('debt-date').value, note: document.getElementById('debt-note').value };
             const cb = () => { btn.innerHTML = 'Catat Piutang'; btn.disabled = false; closeDebtModal(); fetchData(); };
             if (isGAS) google.script.run.withSuccessHandler(cb).withFailureHandler(syncError).saveDebt(data); else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'saveDebt', data: data }) }).then(cb).catch(syncError);
         }
