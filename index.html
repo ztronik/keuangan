@@ -870,12 +870,56 @@
             <div class="footer">© ${new Date().getFullYear()} ${appNameVal} · Z-TRONIK · Laporan dibuat otomatis</div>
             </body></html>`;
 
-            const win = window.open('', '_blank');
-            if (!win) { showCustomAlert('Gagal', 'Popup diblokir browser. Izinkan popup untuk mengunduh PDF.', 'error'); return; }
-            win.document.write(html);
-            win.document.close();
-            win.focus();
-            setTimeout(() => { win.print(); }, 600);
+            // Buat elemen sementara untuk dirender html2pdf
+            const container = document.createElement('div');
+            container.innerHTML = html;
+            // Ambil hanya bagian <body> dari HTML string
+            const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/i);
+            container.innerHTML = bodyMatch ? bodyMatch[1] : html;
+            container.style.cssText = "font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1f2937;padding:28px 32px;width:700px;position:absolute;left:-9999px;top:0;";
+            document.body.appendChild(container);
+
+            // Terapkan inline style agar html2pdf merender dengan benar
+            container.querySelectorAll('.header').forEach(el => { el.style.cssText = 'text-align:center;margin-bottom:24px;padding-bottom:18px;border-bottom:2px solid #10b981;'; });
+            container.querySelectorAll('.header h1').forEach(el => { el.style.cssText = 'font-size:22px;font-weight:800;color:#059669;letter-spacing:0.5px;'; });
+            container.querySelectorAll('.period-badge').forEach(el => { el.style.cssText = 'display:inline-block;background:#ecfdf5;color:#059669;font-size:12px;font-weight:700;padding:4px 14px;border-radius:20px;border:1px solid #6ee7b7;margin-top:8px;'; });
+            container.querySelectorAll('.section-title.exp').forEach(el => { el.style.cssText = 'font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px;margin-bottom:10px;background:#fef2f2;color:#ef4444;'; });
+            container.querySelectorAll('.section-title.inc').forEach(el => { el.style.cssText = 'font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px;margin-bottom:10px;background:#ecfdf5;color:#059669;'; });
+            container.querySelectorAll('table').forEach(el => { el.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;'; });
+            container.querySelectorAll('th').forEach(el => { el.style.cssText = 'background:#f9fafb;font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;padding:8px 10px;text-align:left;border-bottom:1px solid #e5e7eb;'; });
+            container.querySelectorAll('tr').forEach(el => { el.style.borderBottom = '1px solid #f3f4f6'; });
+            container.querySelectorAll('.total-row td').forEach(el => { el.style.cssText = 'font-weight:700;background:#f9fafb;border-top:2px solid #e5e7eb;'; });
+            container.querySelectorAll('.footer').forEach(el => { el.style.cssText = 'text-align:center;margin-top:28px;font-size:10px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:12px;'; });
+
+            showLoading('Membuat PDF...');
+
+            if (typeof html2pdf === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                script.onload = () => doRender();
+                script.onerror = () => { hideLoading(); document.body.removeChild(container); showCustomAlert('Gagal', 'Gagal memuat library PDF. Periksa koneksi internet Anda.', 'error'); };
+                document.head.appendChild(script);
+            } else { doRender(); }
+
+            function doRender() {
+                const fileName = `Laporan_Ranking_${periodLabel.replace(' ', '_')}.pdf`;
+                const opt = {
+                    margin: [10, 10, 10, 10],
+                    filename: fileName,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                html2pdf().set(opt).from(container).save().then(() => {
+                    hideLoading();
+                    document.body.removeChild(container);
+                    showCustomAlert('Berhasil!', `PDF "${fileName}" berhasil diunduh.`, 'success');
+                }).catch(err => {
+                    hideLoading();
+                    document.body.removeChild(container);
+                    showCustomAlert('Gagal', 'Terjadi kesalahan saat membuat PDF: ' + err, 'error');
+                });
+            }
         }
 
         function generateReports() {
