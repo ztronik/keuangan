@@ -588,23 +588,8 @@
         }
 
         // --- RENDER RIWAYAT ---
-        // Normalisasi tanggal dari GAS ke format YYYY-MM-DD lokal (hindari UTC offset)
-        function normalizeDate(val) {
-            if (!val) return '';
-            const s = String(val);
-            // Sudah YYYY-MM-DD
-            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (m) return m[1] + '-' + m[2] + '-' + m[3];
-            // Date object atau string lain -> pakai komponen lokal
-            const d = new Date(val);
-            if (isNaN(d)) return s;
-            return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-        }
-
         function processData(data) {
-            transactionsData = (data || []).map(function(t) {
-                return Object.assign({}, t, { date: normalizeDate(t.date) });
-            }); document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
+            transactionsData = data || []; document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
             const currM = new Date().getMonth(), currY = new Date().getFullYear(); let prevM = currM - 1, prevY = currY; if (prevM < 0) { prevM = 11; prevY--; }
             let currInc = 0, currExp = 0, prevInc = 0, prevExp = 0; let currTrx = [];
 
@@ -661,8 +646,10 @@
             catSelect.innerHTML = typeOptions.map(o => '<option value="' + o.value + '">' + o.label + '</option>').join('');
             let isStandardOption = typeOptions.some(opt => opt.value === trx.category);
             if (isStandardOption) { catSelect.value = trx.category; customInput.classList.add('hidden'); customInput.value = ''; } else { catSelect.value = 'Custom'; customInput.classList.remove('hidden'); customInput.value = trx.category; }
-            // Tanggal sudah dinormalisasi ke YYYY-MM-DD lokal oleh processData via normalizeDate()
-            document.getElementById('input-date').value = trx.date; document.getElementById('input-note').value = trx.note || ''; openModal();
+            // Gunakan tanggal langsung dari data (format YYYY-MM-DD) tanpa konversi timezone
+            // agar tidak terjadi offset 1 hari akibat toISOString() yang selalu UTC
+            const rawDate = typeof trx.date === 'string' ? trx.date.split('T')[0] : (function(){ const d = new Date(trx.date); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); })();
+            document.getElementById('input-date').value = rawDate; document.getElementById('input-note').value = trx.note || ''; openModal();
         }
 
         function deleteTransaction(id) {
