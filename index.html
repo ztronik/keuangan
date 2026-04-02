@@ -198,7 +198,7 @@
                 </div>
 
                 <h3 class="font-bold text-red-500 mb-2 px-1 text-sm"><i class="fas fa-arrow-up mr-1"></i> Rekor Pengeluaran</h3>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-3 mb-6">
                     <div class="bg-white border border-gray-100 shadow-sm p-4 rounded-xl relative group">
                         <button onclick="resetReport('exp_high')" class="absolute right-2 top-2 text-gray-300 hover:text-orange-500 p-1 transition outline-none" title="Reset Rekor ini"><i class="fas fa-sync-alt text-xs"></i></button>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Boros</p>
@@ -210,6 +210,20 @@
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Hemat</p>
                         <p id="rep-exp-low-month" class="font-bold text-gray-800 text-xs mb-1">-</p>
                         <p id="rep-exp-low-val" class="text-emerald-500 font-bold text-sm">Rp 0</p>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="font-bold text-red-500 mb-3 px-1 text-sm flex items-center gap-2"><i class="fas fa-list-ol"></i> Pengeluaran per Kategori <span class="text-[10px] font-normal text-gray-400 normal-case ml-1">bulan ini</span></h3>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div id="rank-expense-list"><div class="p-6 text-center text-gray-400 text-xs">Belum ada pengeluaran bulan ini.</div></div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="font-bold text-emerald-600 mb-3 px-1 text-sm flex items-center gap-2"><i class="fas fa-list-ol"></i> Pemasukan per Kategori <span class="text-[10px] font-normal text-gray-400 normal-case ml-1">bulan ini</span></h3>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div id="rank-income-list"><div class="p-6 text-center text-gray-400 text-xs">Belum ada pemasukan bulan ini.</div></div>
                     </div>
                 </div>
             </div>
@@ -653,6 +667,52 @@
             incomeChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(catTot), datasets: [{ data: Object.values(catTot), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#e879f9', '#ef4444', '#2dd4bf'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } }, cutout: '70%' } });
         }
 
+        function renderCategoryRanks() {
+            const currM = new Date().getMonth(), currY = new Date().getFullYear();
+            const expCat = {}, incCat = {};
+
+            transactionsData.forEach(trx => {
+                const d = new Date(trx.date);
+                if (d.getMonth() !== currM || d.getFullYear() !== currY) return;
+                if (trx.category === 'Rekap Sistem') return;
+                const amt = Number(trx.amount);
+                if (trx.type === 'Pengeluaran') expCat[trx.category] = (expCat[trx.category] || 0) + amt;
+                else if (trx.type === 'Pemasukan') incCat[trx.category] = (incCat[trx.category] || 0) + amt;
+            });
+
+            function buildRankHTML(catObj, colorClass, bgClass, barColor) {
+                const entries = Object.entries(catObj).sort((a, b) => b[1] - a[1]);
+                if (entries.length === 0) return null;
+                const total = entries.reduce((s, e) => s + e[1], 0);
+                const medals = ['🥇','🥈','🥉'];
+                return entries.map(([ cat, amt ], i) => {
+                    const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
+                    const medal = i < 3 ? medals[i] : `<span class="text-[10px] font-bold text-gray-400 w-4 text-center">${i+1}</span>`;
+                    return `<div class="px-4 py-3 border-b border-gray-50 last:border-0">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2 overflow-hidden">
+                                <span class="text-base flex-shrink-0">${medal}</span>
+                                <span class="text-sm font-semibold text-gray-700 truncate">${cat}</span>
+                            </div>
+                            <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+                                <span class="text-xs font-bold ${colorClass}">${pct}%</span>
+                                <span class="text-[11px] text-gray-400 font-medium">${formatRupiah(amt)}</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-1.5">
+                            <div class="h-1.5 rounded-full ${bgClass}" style="width:${pct}%"></div>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            const expHTML = buildRankHTML(expCat, 'text-red-500', 'bg-red-400', 'red');
+            const incHTML = buildRankHTML(incCat, 'text-emerald-600', 'bg-emerald-400', 'emerald');
+
+            document.getElementById('rank-expense-list').innerHTML = expHTML || '<div class="p-6 text-center text-gray-400 text-xs">Belum ada pengeluaran bulan ini.</div>';
+            document.getElementById('rank-income-list').innerHTML = incHTML || '<div class="p-6 text-center text-gray-400 text-xs">Belum ada pemasukan bulan ini.</div>';
+        }
+
         function generateReports() {
             if(transactionsData.length === 0) return;
 
@@ -699,6 +759,7 @@
             document.getElementById('rep-inc-low-month').innerText = loInc.label; document.getElementById('rep-inc-low-val').innerText = formatRupiah(loInc.val);
             document.getElementById('rep-exp-high-month').innerText = hiExp.label; document.getElementById('rep-exp-high-val').innerText = formatRupiah(hiExp.val);
             document.getElementById('rep-exp-low-month').innerText = loExp.label; document.getElementById('rep-exp-low-val').innerText = formatRupiah(loExp.val);
+            renderCategoryRanks();
         }
     </script>
 </body>
