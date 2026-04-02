@@ -116,6 +116,14 @@
                         <div id="no-chart-data" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hidden bg-white z-10"><i class="fas fa-box-open text-3xl mb-2 opacity-50"></i><span class="text-xs font-medium">Belum ada pengeluaran</span></div>
                     </div>
                 </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4 relative">
+                    <h3 class="font-bold text-gray-700 mb-3 text-sm flex items-center gap-2"><i class="fas fa-chart-pie text-blue-500"></i> Grafik Pemasukan</h3>
+                    <div class="relative w-full h-48 flex items-center justify-center">
+                        <canvas id="incomeChart"></canvas>
+                        <div id="no-income-chart-data" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hidden bg-white z-10"><i class="fas fa-box-open text-3xl mb-2 opacity-50"></i><span class="text-xs font-medium">Belum ada pemasukan</span></div>
+                    </div>
+                </div>
             </div>
 
             <div id="tab-history" class="tab-content">
@@ -259,14 +267,18 @@
                     <div>
                         <label class="block text-sm font-semibold mb-1.5">Kategori</label>
                         <select id="input-category" onchange="toggleCustomCategory()" class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 outline-none focus:border-emerald-500">
-                            <option value="Pemasukan">💰 Pemasukan</option>
                             <option value="Pengeluaran">💸 Pengeluaran</option>
-                            <option value="Makanan">🍔 Makanan</option>
-                            <option value="Transportasi">🚗 Transport</option>
+                            <option value="Jajan">🍔 Jajan</option>
+                            <option value="Keperluan Anak">👶 Keperluan Anak</option>
+                            <option value="Keperluan Dapur">🍳 Keperluan Dapur</option>
+                            <option value="Keperluan Cuci">🧺 Keperluan Cuci</option>
+                            <option value="Berobat">💊 Berobat</option>
+                            <option value="Donasi">🤲 Donasi</option>
+                            <option value="Transportasi">🚗 Transportasi</option>
                             <option value="Belanja">🛍️ Belanja</option>
                             <option value="Tagihan">📄 Tagihan</option>
-                            <option value="Piutang">🤝 Piutang/Hutang</option>
-                            <option value="Lainnya">📝 Custom (Ketik)</option>
+                            <option value="Bayar Hutang">💳 Bayar Hutang</option>
+                            <option value="Custom">📝 Custom (Ketik)</option>
                         </select>
                         <input type="text" id="input-category-custom" placeholder="Ketik kategori..." class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 outline-none focus:border-emerald-500 mt-2 hidden text-sm font-medium">
                     </div>
@@ -305,6 +317,7 @@
         let transactionsData = [];
         let debtsData = [];
         let expenseChartInstance = null;
+        let incomeChartInstance = null;
 
         let historySort = 'date_desc'; let historyPage = 1; let debtSort = 'date_desc'; let debtPage = 1; const itemsPerPage = 15;
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -431,14 +444,49 @@
         }
 
         // --- FETCH DATA & UI DASAR ---
-        function toggleCustomCategory() { const catSelect = document.getElementById('input-category').value; const customInput = document.getElementById('input-category-custom'); if (catSelect === 'Lainnya') { customInput.classList.remove('hidden'); customInput.required = true; } else { customInput.classList.add('hidden'); customInput.required = false; customInput.value = ''; } }
+        const categoryOptions = {
+            Pengeluaran: [
+                { value: 'Pengeluaran', label: '💸 Pengeluaran' },
+                { value: 'Jajan', label: '🍔 Jajan' },
+                { value: 'Keperluan Anak', label: '👶 Keperluan Anak' },
+                { value: 'Keperluan Dapur', label: '🍳 Keperluan Dapur' },
+                { value: 'Keperluan Cuci', label: '🧺 Keperluan Cuci' },
+                { value: 'Berobat', label: '💊 Berobat' },
+                { value: 'Donasi', label: '🤲 Donasi' },
+                { value: 'Transportasi', label: '🚗 Transportasi' },
+                { value: 'Belanja', label: '🛍️ Belanja' },
+                { value: 'Tagihan', label: '📄 Tagihan' },
+                { value: 'Bayar Hutang', label: '💳 Bayar Hutang' },
+                { value: 'Custom', label: '📝 Custom (Ketik)' }
+            ],
+            Pemasukan: [
+                { value: 'Pemasukan', label: '💰 Pemasukan' },
+                { value: 'Hasil Usaha', label: '🏪 Hasil Usaha' },
+                { value: 'Gaji', label: '💵 Gaji' },
+                { value: 'Donasi', label: '🤲 Donasi' },
+                { value: 'THR', label: '🎁 THR' },
+                { value: 'Bansos', label: '🏛️ Bansos' },
+                { value: 'Bayar Piutang', label: '🤝 Bayar Piutang' },
+                { value: 'Custom', label: '📝 Custom (Ketik)' }
+            ]
+        };
+
+        function toggleCustomCategory() { const catSelect = document.getElementById('input-category').value; const customInput = document.getElementById('input-category-custom'); if (catSelect === 'Custom') { customInput.classList.remove('hidden'); customInput.required = true; } else { customInput.classList.add('hidden'); customInput.required = false; customInput.value = ''; } }
 
         function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + tabId).classList.add('active'); if(tabId !== 'account') { document.querySelectorAll('.nav-btn').forEach(btn => { if(btn.dataset.target === tabId) btn.classList.replace('text-gray-400', 'text-emerald-600'); else if(btn.dataset.target) btn.classList.replace('text-emerald-600', 'text-gray-400'); }); } else { document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.replace('text-emerald-600', 'text-gray-400')); } }
         function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); }
         function formatDate(dateString) { if(!dateString) return '-'; const date = new Date(dateString); return isNaN(date) ? dateString : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); }
 
         function todayLocalDate() { const now = new Date(); return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0'); }
-        function syncCategoryToType() { const activeType = document.querySelector('input[name="type"]:checked'); const cat = document.getElementById('input-category'); if (activeType) cat.value = (activeType.value === 'Pemasukan') ? 'Pemasukan' : 'Pengeluaran'; toggleCustomCategory(); }
+        function syncCategoryToType() {
+            const activeType = document.querySelector('input[name="type"]:checked');
+            const cat = document.getElementById('input-category');
+            if (!activeType) return;
+            const type = activeType.value;
+            const options = categoryOptions[type] || categoryOptions['Pengeluaran'];
+            cat.innerHTML = options.map(o => '<option value="' + o.value + '">' + o.label + '</option>').join('');
+            toggleCustomCategory();
+        }
         function openModal() { document.getElementById('modal-add').classList.remove('hidden'); setTimeout(() => { document.getElementById('modal-content').classList.remove('translate-y-full'); syncCategoryToType(); }, 10); }
         function closeModal() { document.getElementById('modal-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-add').classList.add('hidden'); document.getElementById('form-transaction').reset(); document.getElementById('input-date').value = todayLocalDate(); document.getElementById('edit-id').value = ''; document.getElementById('modal-title').innerText = 'Catat Transaksi'; syncCategoryToType(); }, 300); }
         function openDebtModal() { document.getElementById('debt-date').value = todayLocalDate(); document.getElementById('modal-debt').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-debt-content').classList.remove('translate-y-full'), 10); }
@@ -494,7 +542,7 @@
             if (prevInc === 0 && currInc === 0) insIncEl.innerText = "Belum ada pemasukan."; else if (currInc > prevInc) insIncEl.innerHTML = "Pemasukan bulan ini <b>lebih besar</b>, pertahankan!"; else if (currInc < prevInc) insIncEl.innerHTML = "Pemasukan bulan ini <b>lebih sedikit</b>, ayo semangat!"; else insIncEl.innerText = "Pemasukan stabil.";
             if (prevExp === 0 && currExp === 0) { insExpEl.innerText = "Belum ada pengeluaran."; iconExpEl.className = "w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center flex-shrink-0 mt-0.5"; } else if (currExp > prevExp) { insExpEl.innerHTML = "Pengeluaran bulan ini <b>lebih besar</b>, tolong hemat!"; iconExpEl.className = "w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center flex-shrink-0 mt-0.5"; } else if (currExp < prevExp) { insExpEl.innerHTML = "Pengeluaran bulan ini <b>lebih sedikit</b>, pengelolaan yang bagus!"; iconExpEl.className = "w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5"; } else { insExpEl.innerText = "Pengeluaran stabil."; iconExpEl.className = "w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5"; }
 
-            renderChart(currTrx); renderTransactionList(); generateReports();
+            renderChart(currTrx); renderIncomeChart(currTrx); renderTransactionList(); generateReports();
         }
 
         function renderTransactionList() {
@@ -520,7 +568,7 @@
         // --- CRUD ACTIONS MENGGUNAKAN POPUP CUSTOM ---
         function submitTransaction(e) {
             e.preventDefault(); const btn = document.getElementById('btn-submit'); btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
-            let catValue = document.getElementById('input-category').value; if (catValue === 'Lainnya') catValue = document.getElementById('input-category-custom').value;
+            let catValue = document.getElementById('input-category').value; if (catValue === 'Custom') catValue = document.getElementById('input-category-custom').value;
             const editId = document.getElementById('edit-id').value;
             const data = { id: editId || null, type: document.querySelector('input[name="type"]:checked').value, amount: document.getElementById('input-amount').value, category: catValue, date: document.getElementById('input-date').value, note: document.getElementById('input-note').value };
             const cb = () => { btn.innerHTML = 'Simpan'; btn.disabled = false; closeModal(); fetchData(); };
@@ -530,9 +578,12 @@
         function editTransaction(id) {
             const trx = transactionsData.find(t => t.id == id); if(!trx) return;
             document.getElementById('edit-id').value = trx.id; document.getElementById('modal-title').innerText = 'Edit Transaksi'; document.querySelector(`input[name="type"][value="${trx.type}"]`).checked = true; document.getElementById('input-amount').value = trx.amount;
+            // Populate category dropdown based on type first
+            const typeOptions = categoryOptions[trx.type] || categoryOptions['Pengeluaran'];
             const catSelect = document.getElementById('input-category'); const customInput = document.getElementById('input-category-custom');
-            let isStandardOption = Array.from(catSelect.options).some(opt => opt.value === trx.category);
-            if (isStandardOption) { catSelect.value = trx.category; customInput.classList.add('hidden'); customInput.value = ''; } else { catSelect.value = 'Lainnya'; customInput.classList.remove('hidden'); customInput.value = trx.category; }
+            catSelect.innerHTML = typeOptions.map(o => '<option value="' + o.value + '">' + o.label + '</option>').join('');
+            let isStandardOption = typeOptions.some(opt => opt.value === trx.category);
+            if (isStandardOption) { catSelect.value = trx.category; customInput.classList.add('hidden'); customInput.value = ''; } else { catSelect.value = 'Custom'; customInput.classList.remove('hidden'); customInput.value = trx.category; }
             document.getElementById('input-date').value = new Date(trx.date).toISOString().split('T')[0]; document.getElementById('input-note').value = trx.note || ''; openModal();
         }
 
@@ -588,6 +639,16 @@
             const catTot = {}; expenses.forEach(trx => { catTot[trx.category] = (catTot[trx.category] || 0) + Number(trx.amount); });
             if (expenseChartInstance) expenseChartInstance.destroy();
             expenseChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(catTot), datasets: [{ data: Object.values(catTot), backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#06b6d4', '#e879f9', '#2dd4bf'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } }, cutout: '70%' } });
+        }
+
+        function renderIncomeChart(currTrx) {
+            const ctx = document.getElementById('incomeChart').getContext('2d'); const noDataEl = document.getElementById('no-income-chart-data');
+            const incomes = currTrx.filter(t => t.type === 'Pemasukan' && t.category !== 'Rekap Sistem');
+            if (incomes.length === 0) { if (incomeChartInstance) incomeChartInstance.destroy(); noDataEl.classList.remove('hidden'); document.getElementById('incomeChart').classList.add('hidden'); return; }
+            noDataEl.classList.add('hidden'); document.getElementById('incomeChart').classList.remove('hidden');
+            const catTot = {}; incomes.forEach(trx => { catTot[trx.category] = (catTot[trx.category] || 0) + Number(trx.amount); });
+            if (incomeChartInstance) incomeChartInstance.destroy();
+            incomeChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(catTot), datasets: [{ data: Object.values(catTot), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#e879f9', '#ef4444', '#2dd4bf'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } }, cutout: '70%' } });
         }
 
         function generateReports() {
