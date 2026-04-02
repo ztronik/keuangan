@@ -527,6 +527,7 @@
         function todayLocalDate() { const now = new Date(); return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0'); }
         function todayDisplay() { const now = new Date(); return String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear(); }
         function isoToDisplay(iso) { if(!iso) return ''; const p = iso.split('T')[0].split('-'); if(p.length < 3) return ''; return p[2] + '/' + p[1] + '/' + p[0]; }
+        function safeIsoDate(raw) { if(!raw) return todayLocalDate(); if(typeof raw === 'string') { var s = raw.split('T')[0]; if(/^d{4}-d{2}-d{2}$/.test(s)) return s; } var d = new Date(raw); if(!isNaN(d)) return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); return todayLocalDate(); }
         function displayToIso(disp) { if(!disp) return ''; const p = disp.split('/'); if(p.length < 3) return ''; return p[2] + '-' + p[1] + '-' + p[0]; }
         function handleDateInput(el) {
             let v = el.value.replace(/\D/g,'');
@@ -632,7 +633,7 @@
         }
 
         // --- RENDER PIUTANG ---
-        function processDebts(data, silent) { debtsData = data || []; renderDebtList(); if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
+        function processDebts(data, silent) { debtsData = (data || []).map(d => ({ ...d, date: safeIsoDate(d.date) })); renderDebtList(); if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
         function renderDebtList() {
             const container = document.getElementById('all-debts'); let totalHutang = 0;
             debtsData.forEach(d => { if(d.status !== 'Lunas') totalHutang += Number(d.amount); }); document.getElementById('total-hutang').innerText = formatRupiah(totalHutang);
@@ -657,7 +658,9 @@
 
         // --- RENDER RIWAYAT ---
         function processData(data, silent) {
-            transactionsData = data || []; if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
+            // Normalisasi semua tanggal ke format YYYY-MM-DD saat data masuk (hindari timezone shift)
+            transactionsData = (data || []).map(trx => ({ ...trx, date: safeIsoDate(trx.date) }));
+            if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
             const currM = new Date().getMonth(), currY = new Date().getFullYear(); let prevM = currM - 1, prevY = currY; if (prevM < 0) { prevM = 11; prevY--; }
             let currInc = 0, currExp = 0, prevInc = 0, prevExp = 0; let currTrx = [];
 
@@ -726,9 +729,7 @@
             catSelect.innerHTML = typeOptions.map(o => '<option value="' + o.value + '">' + o.label + '</option>').join('');
             let isStandardOption = typeOptions.some(opt => opt.value === trx.category);
             if (isStandardOption) { catSelect.value = trx.category; customInput.classList.add('hidden'); customInput.value = ''; } else { catSelect.value = 'Custom'; customInput.classList.remove('hidden'); customInput.value = trx.category; }
-            // Gunakan tanggal langsung dari data (format YYYY-MM-DD) tanpa konversi timezone
-            // agar tidak terjadi offset 1 hari akibat toISOString() yang selalu UTC
-            const rawDate = typeof trx.date === 'string' ? trx.date.split('T')[0] : (function(){ const d = new Date(trx.date); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); })();
+            const rawDate = safeIsoDate(trx.date);
             document.getElementById('input-date').value = rawDate; document.getElementById('input-date-display').value = isoToDisplay(rawDate); document.getElementById('input-date-display').setCustomValidity(''); document.getElementById('input-note').value = trx.note || ''; openModal();
         }
 
