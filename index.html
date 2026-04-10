@@ -137,14 +137,28 @@
             <div id="tab-history" class="tab-content">
                 <div class="flex justify-between items-center mb-4 px-1">
                     <h2 class="text-xl font-bold text-gray-700">Riwayat</h2>
-                    <select id="sort-history" onchange="historySort = this.value; historyPage = 1; renderTransactionList()" class="bg-gray-100 border border-gray-200 text-xs font-bold text-gray-600 rounded-lg px-2 py-2 outline-none cursor-pointer">
-                        <option value="date_desc">🕒 Terbaru</option>
-                        <option value="date_asc">⏳ Terlama</option>
-                        <option value="amount_desc">📈 Nominal Tertinggi</option>
-                        <option value="amount_asc">📉 Nominal Terendah</option>
-                        <option value="type_expense">🔴 Hanya Pengeluaran</option>
-                        <option value="type_income">🟢 Hanya Pemasukan</option>
-                    </select>
+                    <div class="flex items-center gap-2">
+                        <select id="sort-history" onchange="historySort = this.value; historyPage = 1; renderTransactionList()" class="bg-gray-100 border border-gray-200 text-xs font-bold text-gray-600 rounded-lg px-2 py-2 outline-none cursor-pointer">
+                            <option value="date_desc">🕒 Terbaru</option>
+                            <option value="date_asc">⏳ Terlama</option>
+                            <option value="amount_desc">📈 Nominal Tertinggi</option>
+                            <option value="amount_asc">📉 Nominal Terendah</option>
+                            <option value="type_expense">🔴 Hanya Pengeluaran</option>
+                            <option value="type_income">🟢 Hanya Pemasukan</option>
+                        </select>
+                        <div class="flex items-center gap-2">
+                            <div class="relative flex items-center">
+                                <select id="download-month-select" class="bg-emerald-600 border-0 text-xs font-bold text-white rounded-lg pl-2 pr-6 py-2 outline-none cursor-pointer appearance-none" style="min-width:90px;">
+                                    <option value="current">Bulan Ini</option>
+                                    <option value="prev">Bulan Lalu</option>
+                                </select>
+                                <span class="pointer-events-none absolute right-2 text-white text-[9px]">▼</span>
+                            </div>
+                            <button onclick="downloadHistoryPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition active:scale-95 flex items-center gap-1.5" title="Unduh Riwayat PDF">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[50vh]">
                     <div id="all-transactions" class="flex-1"><div class="p-8 text-center text-gray-400">Memuat data...</div></div>
@@ -686,9 +700,33 @@
             renderChart(currTrx); renderIncomeChart(currTrx); renderTransactionList(); generateReports();
         }
 
+        // Kembalikan batas awal 2 bulan (bulan ini + bulan kemarin) untuk filter tampilan riwayat
+        function getTwoMonthCutoff() {
+            const now = new Date();
+            // Awal bulan 2 bulan yang lalu (inklusif: bulan lalu = oke, lebih = dibuang)
+            return new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        }
+
+        // Hapus transaksi lebih dari 2 bulan dari cache lokal (tidak memengaruhi data server)
+        function pruneOldHistoryFromCache() {
+            const cutoff = getTwoMonthCutoff();
+            const beforeCount = transactionsData.length;
+            // Jangan hapus dari transactionsData utama (dipakai beranda/laporan),
+            // hanya filter saat rendering riwayat
+        }
+
         function renderTransactionList() {
-            const allContainer = document.getElementById('all-transactions'); let visibleTrx = transactionsData.filter(t => t.category !== 'Rekap Sistem');
-            if (visibleTrx.length === 0) { allContainer.innerHTML = `<div class="p-8 text-center text-gray-400">Belum ada transaksi.</div>`; document.getElementById('history-pagination').classList.add('hidden'); return; }
+            const allContainer = document.getElementById('all-transactions');
+            const cutoff = getTwoMonthCutoff();
+
+            // Filter: hanya 2 bulan terakhir untuk tampilan riwayat
+            let visibleTrx = transactionsData.filter(t => {
+                if (t.category === 'Rekap Sistem') return false;
+                const d = new Date(t.date);
+                return d >= cutoff;
+            });
+
+            if (visibleTrx.length === 0) { allContainer.innerHTML = `<div class="p-8 text-center text-gray-400">Belum ada transaksi dalam 2 bulan terakhir.</div>`; document.getElementById('history-pagination').classList.add('hidden'); return; }
 
             if(historySort === 'date_desc') visibleTrx.sort((a,b) => new Date(b.date) - new Date(a.date)); else if(historySort === 'date_asc') visibleTrx.sort((a,b) => new Date(a.date) - new Date(b.date)); else if(historySort === 'amount_desc') visibleTrx.sort((a,b) => b.amount - a.amount); else if(historySort === 'amount_asc') visibleTrx.sort((a,b) => a.amount - b.amount); else if(historySort === 'type_expense') visibleTrx = visibleTrx.filter(t => t.type === 'Pengeluaran').sort((a,b) => new Date(b.date) - new Date(a.date)); else if(historySort === 'type_income') visibleTrx = visibleTrx.filter(t => t.type === 'Pemasukan').sort((a,b) => new Date(b.date) - new Date(a.date));
 
@@ -704,6 +742,158 @@
             const isExpense = trx.type === 'Pengeluaran'; const colorClass = isExpense ? 'text-red-500' : 'text-emerald-500';
             const icon = trx.category === 'Piutang' ? 'fa-handshake bg-blue-100 text-blue-600' : (isExpense ? 'fa-arrow-down bg-red-100 text-red-500' : 'fa-arrow-up bg-emerald-100 text-emerald-600');
             return `<div class="flex items-center justify-between p-4 border-b border-gray-50"><div class="flex items-center gap-3 overflow-hidden flex-1"><div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${icon}"><i class="fas ${trx.category==='Piutang' ? 'fa-handshake' : (isExpense ? 'fa-shopping-bag' : 'fa-wallet')}"></i></div><div class="truncate"><p class="font-semibold text-gray-800 truncate">${trx.category}</p><p class="text-[10px] text-gray-500">${formatDate(trx.date)} ${trx.note ? '• '+trx.note : ''}</p></div></div><div class="flex flex-col items-end flex-shrink-0 ml-2"><p class="font-bold ${colorClass} mb-1.5">${isExpense ? '-' : '+'} ${formatRupiah(trx.amount)}</p><div class="flex gap-2"><button onclick="editTransaction('${trx.id}')" class="text-blue-500 bg-blue-50 w-7 h-7 rounded-full flex items-center justify-center"><i class="fas fa-pen text-[10px]"></i></button><button onclick="deleteTransaction('${trx.id}')" class="text-red-500 bg-red-50 w-7 h-7 rounded-full flex items-center justify-center"><i class="fas fa-trash text-[10px]"></i></button></div></div></div>`;
+        }
+
+        // --- UNDUH RIWAYAT PDF ---
+        function downloadHistoryPDF() {
+            const sel = document.getElementById('download-month-select');
+            const isPrev = sel && sel.value === 'prev';
+            const now = new Date();
+            let targetM, targetY;
+            if (isPrev) {
+                const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                targetM = prev.getMonth(); targetY = prev.getFullYear();
+            } else {
+                targetM = now.getMonth(); targetY = now.getFullYear();
+            }
+            const periodLabel = monthNames[targetM] + ' ' + targetY;
+
+            // Ambil data riwayat bulan yang dipilih
+            const trxPeriod = transactionsData.filter(t => {
+                if (t.category === 'Rekap Sistem') return false;
+                const d = new Date(t.date);
+                return d.getMonth() === targetM && d.getFullYear() === targetY;
+            }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (trxPeriod.length === 0) {
+                showCustomAlert('Tidak Ada Data', `Tidak ada riwayat transaksi untuk ${periodLabel}.`, 'error');
+                return;
+            }
+
+            const appNameVal = localStorage.getItem('app_name') || 'DompetKu';
+            const printDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            let totalInc = 0, totalExp = 0;
+            trxPeriod.forEach(t => { if (t.type === 'Pemasukan') totalInc += Number(t.amount); else totalExp += Number(t.amount); });
+
+            const rowsHtml = trxPeriod.map((trx, i) => {
+                const isExp = trx.type === 'Pengeluaran';
+                const color = isExp ? '#ef4444' : '#10b981';
+                const sign = isExp ? '-' : '+';
+                return `<tr>
+                    <td style="padding:7px 10px;text-align:center;color:#9ca3af;font-size:11px;">${i + 1}</td>
+                    <td style="padding:7px 10px;font-size:12px;">${formatDate(trx.date)}</td>
+                    <td style="padding:7px 10px;font-size:12px;font-weight:600;">${trx.category}</td>
+                    <td style="padding:7px 10px;font-size:11px;color:#6b7280;">${trx.note || '-'}</td>
+                    <td style="padding:7px 10px;text-align:right;font-weight:700;font-size:12px;color:${color};">${sign} ${formatRupiah(trx.amount)}</td>
+                    <td style="padding:7px 10px;text-align:center;">
+                        <span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:${isExp ? '#fef2f2' : '#ecfdf5'};color:${color};">${trx.type}</span>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+            <title>Riwayat Transaksi ${periodLabel}</title>
+            <style>
+                * { margin:0; padding:0; box-sizing:border-box; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; background:#fff; color:#1f2937; padding:28px 32px; }
+                .header { text-align:center; margin-bottom:22px; padding-bottom:16px; border-bottom:2px solid #10b981; }
+                .header h1 { font-size:22px; font-weight:800; color:#059669; }
+                .header p { font-size:11px; color:#6b7280; margin-top:4px; }
+                .period-badge { display:inline-block; background:#ecfdf5; color:#059669; font-size:12px; font-weight:700; padding:4px 14px; border-radius:20px; border:1px solid #6ee7b7; margin-top:8px; }
+                .summary { display:flex; gap:12px; margin-bottom:18px; }
+                .summary-box { flex:1; border-radius:10px; padding:10px 14px; }
+                .summary-box.inc { background:#ecfdf5; border:1px solid #6ee7b7; }
+                .summary-box.exp { background:#fef2f2; border:1px solid #fca5a5; }
+                .summary-box.net { background:#eff6ff; border:1px solid #93c5fd; }
+                .summary-box .label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6b7280; }
+                .summary-box .value { font-size:14px; font-weight:800; margin-top:3px; }
+                .summary-box.inc .value { color:#059669; }
+                .summary-box.exp .value { color:#ef4444; }
+                .summary-box.net .value { color:#2563eb; }
+                table { width:100%; border-collapse:collapse; font-size:12px; }
+                thead th { background:#f9fafb; font-size:10px; font-weight:700; text-transform:uppercase; color:#6b7280; padding:8px 10px; border-bottom:2px solid #e5e7eb; text-align:left; }
+                thead th:first-child, thead th:last-child { text-align:center; }
+                thead th:nth-child(5) { text-align:right; }
+                tbody tr { border-bottom:1px solid #f3f4f6; }
+                tbody tr:last-child { border-bottom:none; }
+                tbody tr:nth-child(even) { background:#fafafa; }
+                .footer { text-align:center; margin-top:24px; font-size:10px; color:#9ca3af; border-top:1px solid #f3f4f6; padding-top:12px; }
+                @media print { body { padding:16px; } }
+            </style></head>
+            <body>
+            <div class="header">
+                <h1>💰 ${appNameVal}</h1>
+                <p>Riwayat Transaksi</p>
+                <div class="period-badge">📅 ${periodLabel}</div>
+                <p style="margin-top:8px;font-size:10px;color:#9ca3af;">Dicetak: ${printDate} · Total ${trxPeriod.length} transaksi</p>
+            </div>
+            <div class="summary">
+                <div class="summary-box inc"><div class="label">Pemasukan</div><div class="value">${formatRupiah(totalInc)}</div></div>
+                <div class="summary-box exp"><div class="label">Pengeluaran</div><div class="value">${formatRupiah(totalExp)}</div></div>
+                <div class="summary-box net"><div class="label">Selisih</div><div class="value">${formatRupiah(totalInc - totalExp)}</div></div>
+            </div>
+            <table>
+                <thead><tr><th>#</th><th>Tanggal</th><th>Kategori</th><th>Catatan</th><th style="text-align:right;">Nominal</th><th>Jenis</th></tr></thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+            <div class="footer">© ${new Date().getFullYear()} ${appNameVal} · Z-TRONIK · Laporan dibuat otomatis</div>
+            </body></html>`;
+
+            showLoading('Membuat PDF Riwayat...');
+
+            function doRender() {
+                const fileName = `Riwayat_Transaksi_${periodLabel.replace(/ /g, '_')}.pdf`;
+                const iframe = document.createElement('iframe');
+                iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1px;border:none;visibility:hidden;';
+                document.body.appendChild(iframe);
+                const idoc = iframe.contentDocument || iframe.contentWindow.document;
+                idoc.open(); idoc.write(html); idoc.close();
+                setTimeout(() => {
+                    const target = idoc.body;
+                    const h = target.scrollHeight;
+                    iframe.style.height = h + 'px';
+                    html2canvas(target, { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: 794, windowWidth: 794, scrollY: 0, scrollX: 0 }).then(canvas => {
+                        document.body.removeChild(iframe);
+                        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF({ unit: 'px', format: 'a4', orientation: 'portrait' });
+                        const pageW = pdf.internal.pageSize.getWidth();
+                        const pageH = pdf.internal.pageSize.getHeight();
+                        const imgW = pageW;
+                        const imgH = (canvas.height * pageW) / canvas.width;
+                        let yPos = 0, remaining = imgH, firstPage = true;
+                        while (remaining > 0) {
+                            if (!firstPage) pdf.addPage();
+                            pdf.addImage(imgData, 'JPEG', 0, -yPos, imgW, imgH);
+                            yPos += pageH; remaining -= pageH; firstPage = false;
+                        }
+                        pdf.save(fileName);
+                        hideLoading();
+                        showCustomAlert('Berhasil!', `PDF "${fileName}" berhasil diunduh.`, 'success');
+                    }).catch(err => {
+                        document.body.removeChild(iframe);
+                        hideLoading();
+                        showCustomAlert('Gagal', 'Gagal membuat PDF: ' + err, 'error');
+                    });
+                }, 800);
+            }
+
+            function loadScriptHistory(src, cb) {
+                if (document.querySelector(`script[src="${src}"]`)) { cb(); return; }
+                const s = document.createElement('script');
+                s.src = src; s.onload = cb;
+                s.onerror = () => { hideLoading(); showCustomAlert('Gagal', 'Gagal memuat library.', 'error'); };
+                document.head.appendChild(s);
+            }
+
+            const h2cSrc = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            const jsPDFSrc = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            if (typeof html2canvas === 'undefined') {
+                loadScriptHistory(h2cSrc, () => { if (typeof window.jspdf === 'undefined') { loadScriptHistory(jsPDFSrc, doRender); } else { doRender(); } });
+            } else if (typeof window.jspdf === 'undefined') {
+                loadScriptHistory(jsPDFSrc, doRender);
+            } else { doRender(); }
         }
 
         // --- CRUD ACTIONS MENGGUNAKAN POPUP CUSTOM ---
