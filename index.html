@@ -171,28 +171,83 @@
             </div>
 
             <div id="tab-hutang" class="tab-content">
-                <div class="flex justify-between items-center mb-4 px-1">
-                    <h2 class="text-xl font-bold text-gray-700">Piutang</h2>
-                    <div class="flex gap-2">
-                        <select id="sort-debt" onchange="debtSort = this.value; debtPage = 1; renderDebtList()" class="bg-gray-100 border border-gray-200 text-xs font-bold text-gray-600 rounded-lg px-2 py-1 outline-none cursor-pointer">
-                            <option value="date_desc">🕒 Terbaru</option>
-                            <option value="status_unpaid">⏳ Belum Lunas</option>
-                            <option value="status_paid">✅ Sudah Lunas</option>
-                            <option value="amount_desc">📈 Nominal Tertinggi</option>
-                        </select>
-                        <button onclick="openDebtModal()" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-blue-700 transition"><i class="fas fa-plus"></i></button>
+                <h2 class="text-xl font-bold text-gray-700 mb-3 px-1">Hutang & Piutang</h2>
+
+                <!-- Toggle Sub-Tab -->
+                <div class="flex bg-gray-100 rounded-xl p-1 mb-4">
+                    <button id="subtab-btn-piutang" onclick="switchSubTab('piutang')" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-blue-600 shadow-sm">
+                        <i class="fas fa-hand-holding-usd mr-1.5"></i> Piutang
+                    </button>
+                    <button id="subtab-btn-myhutang" onclick="switchSubTab('myhutang')" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all text-gray-500">
+                        <i class="fas fa-hand-point-left mr-1.5"></i> Hutang Saya
+                    </button>
+                </div>
+
+                <!-- SUB-TAB: PIUTANG (Uang yang dipinjamkan ke orang lain) -->
+                <div id="subtab-piutang">
+                    <div class="flex justify-between items-center mb-3 px-1">
+                        <span class="text-xs text-gray-500 font-medium">Uang yang kamu pinjamkan ke orang lain</span>
+                        <div class="flex gap-2">
+                            <select id="sort-debt" onchange="debtSort = this.value; debtPage = 1; renderDebtList()" class="bg-gray-100 border border-gray-200 text-xs font-bold text-gray-600 rounded-lg px-2 py-1 outline-none cursor-pointer">
+                                <option value="date_desc">🕒 Terbaru</option>
+                                <option value="status_unpaid">⏳ Belum Lunas</option>
+                                <option value="status_paid">✅ Sudah Lunas</option>
+                                <option value="amount_desc">📈 Nominal Tertinggi</option>
+                            </select>
+                            <button onclick="openDebtModal()" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-blue-700 transition"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                            <div><p class="text-[10px] text-orange-600 font-bold uppercase tracking-wider mb-1">Belum Kembali</p><p id="total-hutang" class="text-lg font-bold text-orange-700">Rp 0</p></div>
+                            <div class="w-9 h-9 bg-orange-200 text-orange-600 rounded-full flex items-center justify-center"><i class="fas fa-hand-holding-usd"></i></div>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                            <div><p class="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-1">Sudah Kembali</p><p id="total-piutang-lunas" class="text-lg font-bold text-emerald-700">Rp 0</p></div>
+                            <div class="w-9 h-9 bg-emerald-200 text-emerald-600 rounded-full flex items-center justify-center"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[40vh]">
+                        <div id="all-debts" class="flex-1"><div class="p-8 text-center text-gray-400">Memuat data...</div></div>
+                        <div id="debt-pagination" class="flex justify-between items-center p-3 border-t border-gray-100 bg-gray-50/50 hidden">
+                            <button id="btn-prev-debt" onclick="debtPage--; renderDebtList()" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"><i class="fas fa-chevron-left mr-1"></i> Prev</button>
+                            <span id="debt-page-info" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hal 1 dari 1</span>
+                            <button id="btn-next-debt" onclick="debtPage++; renderDebtList()" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition">Next <i class="fas fa-chevron-right ml-1"></i></button>
+                        </div>
                     </div>
                 </div>
-                <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4 flex items-center justify-between shadow-sm">
-                    <div><p class="text-[10px] text-orange-600 font-bold uppercase tracking-wider mb-1">Total Uang di Orang Lain</p><p id="total-hutang" class="text-xl font-bold text-orange-700">Rp 0</p></div>
-                    <div class="w-10 h-10 bg-orange-200 text-orange-600 rounded-full flex items-center justify-center text-xl"><i class="fas fa-hand-holding-usd"></i></div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[40vh]">
-                    <div id="all-debts" class="flex-1"><div class="p-8 text-center text-gray-400">Memuat data...</div></div>
-                    <div id="debt-pagination" class="flex justify-between items-center p-3 border-t border-gray-100 bg-gray-50/50 hidden">
-                        <button id="btn-prev-debt" onclick="debtPage--; renderDebtList()" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"><i class="fas fa-chevron-left mr-1"></i> Prev</button>
-                        <span id="debt-page-info" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hal 1 dari 1</span>
-                        <button id="btn-next-debt" onclick="debtPage++; renderDebtList()" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition">Next <i class="fas fa-chevron-right ml-1"></i></button>
+
+                <!-- SUB-TAB: HUTANG SAYA (Uang yang saya pinjam dari orang lain) -->
+                <div id="subtab-myhutang" class="hidden">
+                    <div class="flex justify-between items-center mb-3 px-1">
+                        <span class="text-xs text-gray-500 font-medium">Uang yang kamu pinjam dari orang lain</span>
+                        <div class="flex gap-2">
+                            <select id="sort-myhutang" onchange="myHutangSort = this.value; myHutangPage = 1; renderMyHutangList()" class="bg-gray-100 border border-gray-200 text-xs font-bold text-gray-600 rounded-lg px-2 py-1 outline-none cursor-pointer">
+                                <option value="date_desc">🕒 Terbaru</option>
+                                <option value="status_unpaid">⏳ Belum Lunas</option>
+                                <option value="status_paid">✅ Sudah Lunas</option>
+                                <option value="amount_desc">📈 Nominal Tertinggi</option>
+                            </select>
+                            <button onclick="openMyHutangModal()" class="bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-red-600 transition"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                            <div><p class="text-[10px] text-red-600 font-bold uppercase tracking-wider mb-1">Belum Lunas</p><p id="total-myhutang" class="text-lg font-bold text-red-700">Rp 0</p></div>
+                            <div class="w-9 h-9 bg-red-200 text-red-600 rounded-full flex items-center justify-center"><i class="fas fa-credit-card"></i></div>
+                        </div>
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                            <div><p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Sudah Lunas</p><p id="total-myhutang-lunas" class="text-lg font-bold text-gray-700">Rp 0</p></div>
+                            <div class="w-9 h-9 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center"><i class="fas fa-check-double"></i></div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[40vh]">
+                        <div id="all-myhutang" class="flex-1"><div class="p-8 text-center text-gray-400">Memuat data...</div></div>
+                        <div id="myhutang-pagination" class="flex justify-between items-center p-3 border-t border-gray-100 bg-gray-50/50 hidden">
+                            <button id="btn-prev-myhutang" onclick="myHutangPage--; renderMyHutangList()" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"><i class="fas fa-chevron-left mr-1"></i> Prev</button>
+                            <span id="myhutang-page-info" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hal 1 dari 1</span>
+                            <button id="btn-next-myhutang" onclick="myHutangPage++; renderMyHutangList()" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition">Next <i class="fas fa-chevron-right ml-1"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -299,7 +354,7 @@
             <button onclick="switchTab('home')" class="nav-btn text-emerald-600 flex-1 pt-3 pb-4 flex flex-col items-center gap-1 transition-colors" data-target="home"><i class="fas fa-home text-xl mb-0.5"></i><span class="text-[10px] font-semibold">Beranda</span></button>
             <button onclick="switchTab('history')" class="nav-btn text-gray-400 flex-1 pt-3 pb-4 flex flex-col items-center gap-1 transition-colors pr-6" data-target="history"><i class="fas fa-list text-xl mb-0.5"></i><span class="text-[10px] font-semibold">Riwayat</span></button>
             <div class="w-12"></div>
-            <button onclick="switchTab('hutang')" class="nav-btn text-gray-400 flex-1 pt-3 pb-4 flex flex-col items-center gap-1 transition-colors pl-6" data-target="hutang"><i class="fas fa-handshake text-xl mb-0.5"></i><span class="text-[10px] font-semibold">Piutang</span></button>
+            <button onclick="switchTab('hutang')" class="nav-btn text-gray-400 flex-1 pt-3 pb-4 flex flex-col items-center gap-1 transition-colors pl-6" data-target="hutang"><i class="fas fa-handshake text-xl mb-0.5"></i><span class="text-[10px] font-semibold">Hutang</span></button>
             <button onclick="switchTab('reports')" class="nav-btn text-gray-400 flex-1 pt-3 pb-4 flex flex-col items-center gap-1 transition-colors" data-target="reports"><i class="fas fa-chart-bar text-xl mb-0.5"></i><span class="text-[10px] font-semibold">Laporan</span></button>
         </nav>
     </div>
@@ -362,6 +417,94 @@
         </div>
     </div>
 
+    <!-- Modal: Catat Hutang Saya -->
+    <div id="modal-myhutang" class="fixed inset-0 bg-gray-900/60 z-50 hidden flex items-end sm:items-center justify-center transition-opacity backdrop-blur-sm">
+        <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 transform transition-transform translate-y-full duration-300" id="modal-myhutang-content">
+            <div class="flex justify-between items-center mb-5"><h3 class="text-xl font-bold text-red-600"><i class="fas fa-credit-card mr-2"></i>Catat Hutang Saya</h3><button onclick="closeMyHutangModal()" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
+            <p class="text-xs text-gray-500 bg-red-50 rounded-xl px-3 py-2 mb-4">Uang yang kamu pinjam dari orang lain. Saldo dompet akan <b>bertambah</b> saat hutang dicatat, dan <b>berkurang</b> saat dibayar.</p>
+            <form id="form-myhutang" onsubmit="submitMyHutang(event)">
+                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Nama Pemberi Hutang</label><input type="text" id="myhutang-name" required placeholder="Nama orang/lembaga" class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-red-400"></div>
+                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Nominal (Rp)</label><input type="text" id="myhutang-amount" inputmode="numeric" required placeholder="0" class="w-full bg-gray-50 border rounded-xl py-3 px-4 font-semibold text-lg outline-none focus:border-red-400" oninput="formatNominalInput(this)"></div>
+                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Tanggal Pinjam</label><input type="date" id="myhutang-date" required class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-red-400"></div>
+                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Jatuh Tempo (opsional)</label><input type="date" id="myhutang-duedate" class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-red-400"></div>
+                <div class="mb-6"><label class="block text-sm font-semibold mb-1.5">Catatan</label><input type="text" id="myhutang-note" placeholder="Misal: untuk modal usaha" class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-red-400"></div>
+                <button type="submit" class="w-full bg-red-500 text-white rounded-xl py-4 font-bold active:scale-95 transition-transform shadow-lg">Catat Hutang → Tambah Saldo</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Cicil Piutang -->
+    <div id="modal-cicilan-debt" class="fixed inset-0 bg-gray-900/60 z-50 hidden flex items-end sm:items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 transform transition-transform translate-y-full duration-300 max-h-[90vh] overflow-y-auto" id="modal-cicilan-debt-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-blue-600"><i class="fas fa-coins mr-2"></i>Catat Cicilan Piutang</h3>
+                <button onclick="closeCicilanDebtModal()" class="text-gray-400"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="bg-blue-50 rounded-2xl p-4 mb-5 space-y-1.5">
+                <p class="font-bold text-blue-800 text-sm" id="cicilan-debt-nama">—</p>
+                <div class="flex justify-between text-xs"><span class="text-gray-500">Total Piutang</span><span class="font-bold text-gray-700" id="cicilan-debt-total">Rp 0</span></div>
+                <div class="flex justify-between text-xs"><span class="text-gray-500">Sudah Dibayar</span><span class="font-bold text-emerald-600" id="cicilan-debt-terbayar">Rp 0</span></div>
+                <div class="flex justify-between text-xs border-t border-blue-100 pt-1.5"><span class="text-gray-500 font-bold">Sisa Tagihan</span><span class="font-bold text-blue-600" id="cicilan-debt-sisa">Rp 0</span></div>
+            </div>
+            <form onsubmit="submitCicilanDebt(event)">
+                <input type="hidden" id="cicilan-debt-id">
+                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Nominal Cicilan (Rp)</label><input type="text" id="cicilan-debt-amount" inputmode="numeric" required placeholder="0" class="w-full bg-gray-50 border rounded-xl py-3 px-4 font-semibold text-lg outline-none focus:border-blue-500" oninput="formatNominalInput(this)"></div>
+                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Tanggal Bayar</label><input type="date" id="cicilan-debt-date" required class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-blue-500"></div>
+                <div class="mb-6"><label class="block text-sm font-semibold mb-1.5">Catatan (opsional)</label><input type="text" id="cicilan-debt-note" placeholder="Misal: cicilan ke-1" class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-blue-500"></div>
+                <button type="submit" class="w-full bg-blue-600 text-white rounded-xl py-4 font-bold active:scale-95 transition-transform shadow-lg">Simpan Cicilan → Tambah Saldo</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Cicil Hutang Saya -->
+    <div id="modal-cicilan-mh" class="fixed inset-0 bg-gray-900/60 z-50 hidden flex items-end sm:items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 transform transition-transform translate-y-full duration-300 max-h-[90vh] overflow-y-auto" id="modal-cicilan-mh-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-orange-600"><i class="fas fa-coins mr-2"></i>Catat Cicilan Hutang</h3>
+                <button onclick="closeCicilanMyHutangModal()" class="text-gray-400"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="bg-orange-50 rounded-2xl p-4 mb-5 space-y-1.5">
+                <p class="font-bold text-orange-800 text-sm" id="cicilan-mh-nama">—</p>
+                <div class="flex justify-between text-xs"><span class="text-gray-500">Total Hutang</span><span class="font-bold text-gray-700" id="cicilan-mh-total">Rp 0</span></div>
+                <div class="flex justify-between text-xs"><span class="text-gray-500">Sudah Dibayar</span><span class="font-bold text-emerald-600" id="cicilan-mh-terbayar">Rp 0</span></div>
+                <div class="flex justify-between text-xs border-t border-orange-100 pt-1.5"><span class="text-gray-500 font-bold">Sisa Hutang</span><span class="font-bold text-red-600" id="cicilan-mh-sisa">Rp 0</span></div>
+            </div>
+            <form onsubmit="submitCicilanMyHutang(event)">
+                <input type="hidden" id="cicilan-mh-id">
+                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Nominal Cicilan (Rp)</label><input type="text" id="cicilan-mh-amount" inputmode="numeric" required placeholder="0" class="w-full bg-gray-50 border rounded-xl py-3 px-4 font-semibold text-lg outline-none focus:border-orange-400" oninput="formatNominalInput(this)"></div>
+                <div class="mb-4"><label class="block text-sm font-semibold mb-1.5">Tanggal Bayar</label><input type="date" id="cicilan-mh-date" required class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-orange-400"></div>
+                <div class="mb-6"><label class="block text-sm font-semibold mb-1.5">Catatan (opsional)</label><input type="text" id="cicilan-mh-note" placeholder="Misal: cicilan ke-1" class="w-full bg-gray-50 border rounded-xl py-3 px-4 outline-none focus:border-orange-400"></div>
+                <button type="submit" class="w-full bg-orange-500 text-white rounded-xl py-4 font-bold active:scale-95 transition-transform shadow-lg">Simpan Cicilan → Kurangi Saldo</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Riwayat Cicilan -->
+    <div id="modal-riwayat-cicilan" class="fixed inset-0 bg-gray-900/60 z-[55] hidden flex items-center justify-center backdrop-blur-sm px-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl transform scale-95 transition-transform max-h-[85vh] flex flex-col" id="modal-riwayat-cicilan-content">
+            <div class="flex justify-between items-center p-5 border-b border-gray-100 flex-shrink-0">
+                <h3 class="font-bold text-gray-800 text-sm" id="riwayat-cicilan-title">Riwayat Cicilan</h3>
+                <button onclick="closeRiwayatCicilanModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-4 flex-shrink-0">
+                <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                    <div class="bg-gray-50 rounded-xl p-2"><p class="text-[9px] text-gray-400 font-bold uppercase">Total</p><p class="text-xs font-bold text-gray-700 mt-0.5" id="riwayat-cicilan-total">Rp 0</p></div>
+                    <div class="bg-emerald-50 rounded-xl p-2"><p class="text-[9px] text-emerald-600 font-bold uppercase">Terbayar</p><p class="text-xs font-bold text-emerald-700 mt-0.5" id="riwayat-cicilan-terbayar">Rp 0</p></div>
+                    <div class="bg-red-50 rounded-xl p-2"><p class="text-[9px] text-red-500 font-bold uppercase">Sisa</p><p class="text-xs font-bold text-red-600 mt-0.5" id="riwayat-cicilan-sisa">Rp 0</p></div>
+                </div>
+                <div class="flex items-center gap-2 mb-1">
+                    <div class="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div id="riwayat-cicilan-bar" class="h-full bg-blue-400 rounded-full transition-all" style="width:0%"></div>
+                    </div>
+                    <span class="text-xs font-bold text-gray-600 w-8 text-right" id="riwayat-cicilan-pct">0%</span>
+                </div>
+            </div>
+            <div class="overflow-y-auto flex-1 border-t border-gray-100">
+                <div id="riwayat-cicilan-list"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Variabel Otentikasi & Setting
         let isLoggedIn = localStorage.getItem('is_logged_in') === 'true';
@@ -369,7 +512,7 @@
         let appName = localStorage.getItem('app_name') || 'DompetKu';
 
         // ===== LINK GOOGLE APPS SCRIPT =====
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbz_MCzzsMpERC5qncLZxpIod6fz-gblYieJNp9gGNeaK9nRSXfuaTNDGxEOsOy4wJBO5A/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyieezCjUahYuuZ4Q3knaNHuqr98uovdWHmvA8wac-MJydN7kdb0YwxNTnl2my09jJKmA/exec";
         const isGAS = typeof google !== 'undefined' && google.script;
 
         // Data & State Pagination
@@ -378,7 +521,9 @@
         let expenseChartInstance = null;
         let incomeChartInstance = null;
 
-        let historySort = 'date_desc'; let historyPage = 1; let debtSort = 'date_desc'; let debtPage = 1; const itemsPerPage = 15;
+        let historySort = 'date_desc'; let historyPage = 1; let debtSort = 'date_desc'; let debtPage = 1; let myHutangSort = 'date_desc'; let myHutangPage = 1; const itemsPerPage = 15;
+        let myHutangData = [];
+        const CACHE_KEY_MYHUTANG = 'cache_myhutang';
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
         // Prevent pull-to-refresh on Android WebView
@@ -517,6 +662,7 @@
                 { value: 'Belanja', label: '🛍️ Belanja' },
                 { value: 'Tagihan', label: '📄 Tagihan' },
                 { value: 'Bayar Hutang', label: '💳 Bayar Hutang' },
+                { value: 'Piutang Keluar', label: '🤝 Piutang Keluar' },
                 { value: 'Custom', label: '📝 Custom (Ketik)' }
             ],
             Pemasukan: [
@@ -527,6 +673,7 @@
                 { value: 'THR', label: '🎁 THR' },
                 { value: 'Bansos', label: '🏛️ Bansos' },
                 { value: 'Bayar Piutang', label: '🤝 Bayar Piutang' },
+                { value: 'Hutang Masuk', label: '💸 Hutang Masuk' },
                 { value: 'Custom', label: '📝 Custom (Ketik)' }
             ]
         };
@@ -581,6 +728,22 @@
         function closeModal() { document.getElementById('modal-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-add').classList.add('hidden'); document.getElementById('form-transaction').reset(); document.getElementById('input-date').value = todayLocalDate(); document.getElementById('input-date-display').value = todayDisplay(); document.getElementById('input-date-display').setCustomValidity(''); document.getElementById('edit-id').value = ''; document.getElementById('modal-title').innerText = 'Catat Transaksi'; syncCategoryToType(); }, 300); }
         function openDebtModal() { document.getElementById('debt-date').value = todayLocalDate(); document.getElementById('modal-debt').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-debt-content').classList.remove('translate-y-full'), 10); }
         function closeDebtModal() { document.getElementById('modal-debt-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-debt').classList.add('hidden'); document.getElementById('form-debt').reset(); }, 300); }
+        function openMyHutangModal() { document.getElementById('myhutang-date').value = todayLocalDate(); document.getElementById('modal-myhutang').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-myhutang-content').classList.remove('translate-y-full'), 10); }
+        function closeMyHutangModal() { document.getElementById('modal-myhutang-content').classList.add('translate-y-full'); setTimeout(() => { document.getElementById('modal-myhutang').classList.add('hidden'); document.getElementById('form-myhutang').reset(); }, 300); }
+        function switchSubTab(tab) {
+            const isPiutang = tab === 'piutang';
+            document.getElementById('subtab-piutang').classList.toggle('hidden', !isPiutang);
+            document.getElementById('subtab-myhutang').classList.toggle('hidden', isPiutang);
+            const btnP = document.getElementById('subtab-btn-piutang');
+            const btnH = document.getElementById('subtab-btn-myhutang');
+            if (isPiutang) {
+                btnP.className = 'flex-1 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-blue-600 shadow-sm';
+                btnH.className = 'flex-1 py-2.5 rounded-lg text-sm font-bold transition-all text-gray-500';
+            } else {
+                btnH.className = 'flex-1 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-red-600 shadow-sm';
+                btnP.className = 'flex-1 py-2.5 rounded-lg text-sm font-bold transition-all text-gray-500';
+            }
+        }
 
         // --- RESET NOMINAL BERANDA SETIAP TANGGAL 1 ---
         function checkMonthlyReset() {
@@ -614,8 +777,10 @@
             // Tampilkan cache dulu (instan), lalu fetch di background
             const cachedTrx = loadCache(CACHE_KEY_TRX);
             const cachedDebt = loadCache(CACHE_KEY_DEBT);
+            const cachedMyHutang = loadCache(CACHE_KEY_MYHUTANG);
             if (cachedTrx) { processData(cachedTrx, true); }
             if (cachedDebt) { processDebts(cachedDebt, true); }
+            if (cachedMyHutang) { processMyHutang(cachedMyHutang, true); }
             fetchData();
         }
 
@@ -626,17 +791,30 @@
             if (isGAS) {
                 google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_TRX, d); processData(d); }).withFailureHandler(syncError).getTransactions();
                 google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_DEBT, d); processDebts(d); }).withFailureHandler(syncError).getDebts();
+                google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_MYHUTANG, d); processMyHutang(d); }).withFailureHandler(syncError).getMyHutang();
             } else if (GAS_URL !== "") {
                 fetch(`${GAS_URL}?action=getTransactions`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_TRX, d); processData(d); }).catch(syncError);
                 fetch(`${GAS_URL}?action=getDebts`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_DEBT, d); processDebts(d); }).catch(syncError);
+                fetch(`${GAS_URL}?action=getMyHutang`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_MYHUTANG, d); processMyHutang(d); }).catch(() => { processMyHutang(loadCache(CACHE_KEY_MYHUTANG) || [], true); });
+            } else {
+                // Standalone mode: langsung dari cache
+                processMyHutang(loadCache(CACHE_KEY_MYHUTANG) || [], true);
             }
         }
 
         // Optimistic update: langsung ubah data lokal + UI, lalu sync background
-        function optimisticSaveTrx(newTrx) {
+        function optimisticSaveTrx(newTrx, syncToServer) {
             transactionsData = [newTrx, ...transactionsData];
             saveCache(CACHE_KEY_TRX, transactionsData);
             processData(transactionsData, true);
+            // Jika diminta sync ke server (untuk transaksi otomatis dari hutang/piutang)
+            if (syncToServer) {
+                if (isGAS) {
+                    google.script.run.saveTransaction(newTrx);
+                } else if (GAS_URL !== "") {
+                    fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'saveTransaction', data: newTrx }) }).catch(() => {});
+                }
+            }
         }
         function optimisticUpdateTrx(updated) {
             transactionsData = transactionsData.map(t => t.id === updated.id ? { ...t, ...updated } : t);
@@ -652,13 +830,30 @@
             debtsData = [newDebt, ...debtsData];
             saveCache(CACHE_KEY_DEBT, debtsData);
             processDebts(debtsData, true);
+            // Kurangi saldo dompet: catat sebagai pengeluaran "Piutang Keluar"
+            const trx = { id: 'trx_debt_' + Date.now(), type: 'Pengeluaran', amount: newDebt.amount, category: 'Piutang Keluar', date: newDebt.date, note: 'Piutang ke ' + newDebt.name, timestamp: new Date().toISOString() };
+            optimisticSaveTrx(trx, true);
+        }
+        function optimisticSaveMyHutang(newItem) {
+            myHutangData = [newItem, ...myHutangData];
+            saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+            processMyHutang(myHutangData, true);
+            // Tambah saldo dompet: catat sebagai pemasukan "Hutang Masuk"
+            const trx = { id: 'trx_mh_' + Date.now(), type: 'Pemasukan', amount: newItem.amount, category: 'Hutang Masuk', date: newItem.date, note: 'Hutang dari ' + newItem.name, timestamp: new Date().toISOString() };
+            optimisticSaveTrx(trx, true);
         }
 
         // --- RENDER PIUTANG ---
         function processDebts(data, silent) { debtsData = (data || []).map(d => ({ ...d, date: safeIsoDate(d.date) })); renderDebtList(); if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
+        function getDebtPaid(debt) { return (debt.cicilan || []).reduce((s,c) => s + Number(c.amount), 0); }
         function renderDebtList() {
-            const container = document.getElementById('all-debts'); let totalHutang = 0;
-            debtsData.forEach(d => { if(d.status !== 'Lunas') totalHutang += Number(d.amount); }); document.getElementById('total-hutang').innerText = formatRupiah(totalHutang);
+            const container = document.getElementById('all-debts'); let totalHutang = 0; let totalLunas = 0;
+            debtsData.forEach(d => {
+                const sisa = Number(d.amount) - getDebtPaid(d);
+                if(d.status !== 'Lunas') totalHutang += Math.max(0, sisa); else totalLunas += Number(d.amount);
+            });
+            document.getElementById('total-hutang').innerText = formatRupiah(totalHutang);
+            if(document.getElementById('total-piutang-lunas')) document.getElementById('total-piutang-lunas').innerText = formatRupiah(totalLunas);
             if (debtsData.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400"><i class="fas fa-box-open text-3xl mb-2 opacity-50 block"></i>Belum ada piutang.</div>`; document.getElementById('debt-pagination').classList.add('hidden'); return; }
 
             let filtered = [...debtsData];
@@ -671,10 +866,126 @@
                 let html = '';
                 paginatedData.forEach(debt => {
                     const isLunas = debt.status === 'Lunas';
-                    const buttonAction = isLunas ? `<span class="text-[10px] text-gray-400 font-medium flex items-center gap-1"><i class="fas fa-check-double text-emerald-500"></i> ${formatDate(debt.paidDate)}</span>` : `<button onclick="markAsPaid('${debt.id}')" class="text-xs bg-emerald-500 text-white px-3 py-1.5 rounded shadow-sm hover:bg-emerald-600"><i class="fas fa-hand-holding-usd"></i> Lunas</button>`;
-                    html += `<div class="flex items-center justify-between p-4 border-b border-gray-50 ${isLunas ? 'opacity-60 bg-gray-50' : 'bg-white'}"><div class="flex items-center gap-3 overflow-hidden flex-1"><div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isLunas ? 'bg-emerald-50 text-emerald-500' : 'bg-orange-50 text-orange-500'}"><i class="fas ${isLunas ? 'fa-check-circle' : 'fa-user-clock'}"></i></div><div class="truncate"><p class="font-bold text-gray-800 truncate ${isLunas ? 'line-through decoration-gray-400' : ''}">${debt.name}</p><p class="text-[10px] text-gray-500">${formatDate(debt.date)} ${debt.note ? '• '+debt.note : ''}</p></div></div><div class="flex flex-col items-end flex-shrink-0 ml-2 gap-1.5"><p class="font-bold text-gray-800">${formatRupiah(debt.amount)}</p>${buttonAction}</div>${!isLunas ? `<button onclick="deleteDebt('${debt.id}')" class="ml-3 text-red-300 hover:text-red-500"><i class="fas fa-trash text-xs"></i></button>` : ''}</div>`;
+                    const totalAmt = Number(debt.amount);
+                    const paid = getDebtPaid(debt);
+                    const sisa = Math.max(0, totalAmt - paid);
+                    const pct = totalAmt > 0 ? Math.min(100, Math.round(paid / totalAmt * 100)) : 0;
+                    const hasCicilan = (debt.cicilan || []).length > 0;
+                    const progressBar = !isLunas && hasCicilan ? `
+                        <div class="mt-1.5 w-full">
+                            <div class="flex justify-between text-[9px] text-gray-400 mb-0.5">
+                                <span>Terbayar ${pct}%</span><span>Sisa ${formatRupiah(sisa)}</span>
+                            </div>
+                            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-emerald-400 rounded-full transition-all" style="width:${pct}%"></div>
+                            </div>
+                        </div>` : '';
+                    const btnActions = isLunas
+                        ? `<span class="text-[10px] text-gray-400 font-medium flex items-center gap-1"><i class="fas fa-check-double text-emerald-500"></i> Lunas</span>`
+                        : `<div class="flex gap-1">
+                            <button onclick="openCicilanDebtModal('${debt.id}')" class="text-xs bg-blue-500 text-white px-2.5 py-1.5 rounded shadow-sm hover:bg-blue-600 flex items-center gap-1"><i class="fas fa-coins"></i> Cicil</button>
+                            <button onclick="markAsPaid('${debt.id}')" class="text-xs bg-emerald-500 text-white px-2.5 py-1.5 rounded shadow-sm hover:bg-emerald-600 flex items-center gap-1"><i class="fas fa-check"></i> Lunas</button>
+                           </div>`;
+                    html += `<div class="p-4 border-b border-gray-50 ${isLunas ? 'opacity-60 bg-gray-50' : 'bg-white'}">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center gap-3 overflow-hidden flex-1">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isLunas ? 'bg-emerald-50 text-emerald-500' : 'bg-orange-50 text-orange-500'}">
+                                    <i class="fas ${isLunas ? 'fa-check-circle' : 'fa-user-clock'}"></i>
+                                </div>
+                                <div class="overflow-hidden flex-1">
+                                    <p class="font-bold text-gray-800 truncate ${isLunas ? 'line-through decoration-gray-400' : ''}">${debt.name}</p>
+                                    <p class="text-[10px] text-gray-500">${formatDate(debt.date)} ${debt.note ? '• '+debt.note : ''}</p>
+                                    <p class="font-bold text-gray-800 text-sm mt-0.5">${formatRupiah(totalAmt)}</p>
+                                    ${progressBar}
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end flex-shrink-0 ml-2 gap-1.5">
+                                ${btnActions}
+                                <div class="flex gap-1 mt-1">
+                                    ${hasCicilan && !isLunas ? `<button onclick="openRiwayatCicilanModal('${debt.id}','piutang')" class="text-gray-400 hover:text-blue-500 w-6 h-6 flex items-center justify-center" title="Riwayat Cicilan"><i class="fas fa-history text-xs"></i></button>` : ''}
+                                    ${!isLunas ? `<button onclick="deleteDebt('${debt.id}')" class="text-red-300 hover:text-red-500 w-6 h-6 flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
                 });
                 container.innerHTML = html; document.getElementById('debt-pagination').classList.remove('hidden'); document.getElementById('debt-page-info').innerText = `Hal ${debtPage} dari ${totalPages}`; document.getElementById('btn-prev-debt').disabled = debtPage === 1; document.getElementById('btn-next-debt').disabled = debtPage === totalPages;
+            }
+        }
+
+        // --- RENDER HUTANG SAYA ---
+        function processMyHutang(data, silent) { myHutangData = (data || []).map(d => ({ ...d, date: safeIsoDate(d.date) })); renderMyHutangList(); if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
+        function getMyHutangPaid(item) { return (item.cicilan || []).reduce((s,c) => s + Number(c.amount), 0); }
+        function renderMyHutangList() {
+            const container = document.getElementById('all-myhutang');
+            if (!container) return;
+            let totalBelumLunas = 0; let totalLunas = 0;
+            myHutangData.forEach(d => {
+                const sisa = Number(d.amount) - getMyHutangPaid(d);
+                if(d.status !== 'Lunas') totalBelumLunas += Math.max(0, sisa); else totalLunas += Number(d.amount);
+            });
+            const el1 = document.getElementById('total-myhutang'); if(el1) el1.innerText = formatRupiah(totalBelumLunas);
+            const el2 = document.getElementById('total-myhutang-lunas'); if(el2) el2.innerText = formatRupiah(totalLunas);
+
+            if (myHutangData.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400"><i class="fas fa-box-open text-3xl mb-2 opacity-50 block"></i>Belum ada catatan hutang.</div>`; document.getElementById('myhutang-pagination').classList.add('hidden'); return; }
+
+            let filtered = [...myHutangData];
+            if (myHutangSort === 'date_desc') filtered.sort((a,b) => new Date(b.date) - new Date(a.date)); else if (myHutangSort === 'date_asc') filtered.sort((a,b) => new Date(a.date) - new Date(b.date)); else if (myHutangSort === 'amount_desc') filtered.sort((a,b) => b.amount - a.amount); else if (myHutangSort === 'status_unpaid') filtered = filtered.filter(d => d.status !== 'Lunas'); else if (myHutangSort === 'status_paid') filtered = filtered.filter(d => d.status === 'Lunas');
+
+            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1; if(myHutangPage > totalPages) myHutangPage = totalPages;
+            const startIdx = (myHutangPage - 1) * itemsPerPage; const paginatedData = filtered.slice(startIdx, startIdx + itemsPerPage);
+
+            if (paginatedData.length === 0) { container.innerHTML = `<div class="p-8 text-center text-gray-400">Data kosong pada filter ini.</div>`; document.getElementById('myhutang-pagination').classList.add('hidden'); } else {
+                let html = '';
+                paginatedData.forEach(item => {
+                    const isLunas = item.status === 'Lunas';
+                    const totalAmt = Number(item.amount);
+                    const paid = getMyHutangPaid(item);
+                    const sisa = Math.max(0, totalAmt - paid);
+                    const pct = totalAmt > 0 ? Math.min(100, Math.round(paid / totalAmt * 100)) : 0;
+                    const hasCicilan = (item.cicilan || []).length > 0;
+                    const isOverdue = item.duedate && !isLunas && new Date(item.duedate) < new Date();
+                    const dueInfo = item.duedate ? `<span class="text-[10px] ${isOverdue ? 'text-red-500 font-bold' : 'text-gray-400'}"><i class="fas fa-clock mr-0.5"></i>${isOverdue ? '⚠️ ' : ''}Jatuh tempo: ${formatDate(item.duedate)}</span>` : '';
+                    const progressBar = !isLunas && hasCicilan ? `
+                        <div class="mt-1.5 w-full">
+                            <div class="flex justify-between text-[9px] text-gray-400 mb-0.5">
+                                <span>Terbayar ${pct}%</span><span>Sisa ${formatRupiah(sisa)}</span>
+                            </div>
+                            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-red-400 rounded-full transition-all" style="width:${pct}%"></div>
+                            </div>
+                        </div>` : '';
+                    const btnActions = isLunas
+                        ? `<span class="text-[10px] text-gray-400 font-medium flex items-center gap-1"><i class="fas fa-check-double text-emerald-500"></i> Lunas</span>`
+                        : `<div class="flex gap-1">
+                            <button onclick="openCicilanMyHutangModal('${item.id}')" class="text-xs bg-orange-500 text-white px-2.5 py-1.5 rounded shadow-sm hover:bg-orange-600 flex items-center gap-1"><i class="fas fa-coins"></i> Cicil</button>
+                            <button onclick="payMyHutang('${item.id}')" class="text-xs bg-red-500 text-white px-2.5 py-1.5 rounded shadow-sm hover:bg-red-600 flex items-center gap-1"><i class="fas fa-check"></i> Lunas</button>
+                           </div>`;
+                    html += `<div class="p-4 border-b border-gray-50 ${isLunas ? 'opacity-60 bg-gray-50' : 'bg-white'}">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center gap-3 overflow-hidden flex-1">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isLunas ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-500'}">
+                                    <i class="fas ${isLunas ? 'fa-check-circle' : 'fa-hand-point-left'}"></i>
+                                </div>
+                                <div class="overflow-hidden flex-1">
+                                    <p class="font-bold text-gray-800 truncate ${isLunas ? 'line-through decoration-gray-400' : ''}">dari ${item.name}</p>
+                                    <p class="text-[10px] text-gray-500">${formatDate(item.date)} ${item.note ? '• '+item.note : ''}</p>
+                                    ${dueInfo}
+                                    <p class="font-bold ${isLunas ? 'text-gray-500' : 'text-red-500'} text-sm mt-0.5">${formatRupiah(totalAmt)}</p>
+                                    ${progressBar}
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end flex-shrink-0 ml-2 gap-1.5">
+                                ${btnActions}
+                                <div class="flex gap-1 mt-1">
+                                    ${hasCicilan && !isLunas ? `<button onclick="openRiwayatCicilanModal('${item.id}','myhutang')" class="text-gray-400 hover:text-orange-500 w-6 h-6 flex items-center justify-center" title="Riwayat Cicilan"><i class="fas fa-history text-xs"></i></button>` : ''}
+                                    ${!isLunas ? `<button onclick="deleteMyHutang('${item.id}')" class="text-red-300 hover:text-red-500 w-6 h-6 flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML = html; document.getElementById('myhutang-pagination').classList.remove('hidden'); document.getElementById('myhutang-page-info').innerText = `Hal ${myHutangPage} dari ${totalPages}`; document.getElementById('btn-prev-myhutang').disabled = myHutangPage === 1; document.getElementById('btn-next-myhutang').disabled = myHutangPage === totalPages;
             }
         }
 
@@ -933,6 +1244,52 @@
 
         function deleteTransaction(id) {
             showCustomConfirm('Hapus Transaksi', 'Apakah Anda yakin ingin menghapus transaksi ini selamanya?', 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
+                // Sebelum hapus, cek apakah transaksi ini adalah cicilan hutang/piutang
+                const trx = transactionsData.find(t => t.id === id);
+                if (trx) {
+                    // Cek apakah trxId ini ada di cicilan piutang
+                    let debtChanged = false;
+                    debtsData = debtsData.map(d => {
+                        const hasCic = (d.cicilan || []).some(c => c.trxId === id || c.id === id);
+                        if (!hasCic) return d;
+                        const cicilan = (d.cicilan || []).filter(c => c.trxId !== id && c.id !== id);
+                        const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
+                        const isNowLunas = totalPaid >= Number(d.amount);
+                        debtChanged = true;
+                        return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? d.paidDate : '' };
+                    });
+                    if (debtChanged) {
+                        saveCache(CACHE_KEY_DEBT, debtsData);
+                        processDebts(debtsData, true);
+                        // Sync cicilan ke server
+                        debtsData.forEach(d => {
+                            if (isGAS) google.script.run.updateDebtCicilan(d.id, d.cicilan || []);
+                            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                        });
+                    }
+
+                    // Cek apakah trxId ini ada di cicilan hutang saya
+                    let mhChanged = false;
+                    myHutangData = myHutangData.map(d => {
+                        const hasCic = (d.cicilan || []).some(c => c.trxId === id || c.id === id);
+                        if (!hasCic) return d;
+                        const cicilan = (d.cicilan || []).filter(c => c.trxId !== id && c.id !== id);
+                        const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
+                        const isNowLunas = totalPaid >= Number(d.amount);
+                        mhChanged = true;
+                        return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? d.paidDate : '' };
+                    });
+                    if (mhChanged) {
+                        saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                        processMyHutang(myHutangData, true);
+                        // Sync cicilan ke server
+                        myHutangData.forEach(d => {
+                            if (isGAS) google.script.run.updateMyHutangCicilan(d.id, d.cicilan || []);
+                            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                        });
+                    }
+                }
+
                 optimisticDeleteTrx(id);
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menghapus...';
                 if (isGAS) google.script.run.withSuccessHandler(fetchData).deleteTransaction(id);
@@ -953,10 +1310,15 @@
 
         function markAsPaid(id) {
             showCustomConfirm('Tandai Lunas', 'Uang hutang sudah Anda terima? (Otomatis menambah saldo pemasukan)', 'Terima Lunas', 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30', () => {
+                const debt = debtsData.find(d => d.id === id); if (!debt) return;
+                const paidDate = new Date().toISOString().split('T')[0];
                 // Optimistic: update status lokal langsung
-                debtsData = debtsData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: new Date().toISOString().split('T')[0] } : d);
+                debtsData = debtsData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: paidDate } : d);
                 saveCache(CACHE_KEY_DEBT, debtsData);
                 processDebts(debtsData, true);
+                // Tambah saldo: catat sebagai pemasukan "Bayar Piutang"
+                const trx = { id: 'trx_paid_' + Date.now(), type: 'Pemasukan', amount: debt.amount, category: 'Bayar Piutang', date: paidDate, note: 'Piutang lunas dari ' + debt.name, timestamp: new Date().toISOString() };
+                optimisticSaveTrx(trx, true);
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Proses...';
                 if (isGAS) google.script.run.withSuccessHandler(fetchData).payDebt(id);
                 else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'payDebt', id: id }) }).then(fetchData).catch(syncError);
@@ -964,13 +1326,306 @@
         }
 
         function deleteDebt(id) {
-            showCustomConfirm('Batalkan Kasbon', 'Hapus catatan kasbon ini dan tarik kembali riwayat pemotongannya?', 'Hapus Kasbon', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
+            showCustomConfirm('Batalkan Piutang', 'Hapus catatan piutang ini beserta riwayat transaksinya (Piutang Keluar & Bayar Piutang) dari dompet?', 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
+                const debt = debtsData.find(d => d.id === id);
+                const debtName = debt ? debt.name : null;
+
+                // Kumpulkan semua trxId dari cicilan piutang ini
+                const cicilanTrxIds = debt ? (debt.cicilan || []).map(c => c.trxId).filter(Boolean) : [];
+
                 debtsData = debtsData.filter(d => d.id !== id);
                 saveCache(CACHE_KEY_DEBT, debtsData);
                 processDebts(debtsData, true);
+
+                // Hapus transaksi riwayat terkait: transaksi awal + semua cicilan
+                if (debtName) {
+                    const prefixes = [
+                        { cat: 'Piutang Keluar',  prefix: 'Piutang ke '           + debtName },
+                        { cat: 'Bayar Piutang',   prefix: 'Piutang lunas dari '   + debtName },
+                        { cat: 'Bayar Piutang',   prefix: 'Cicilan piutang dari '  + debtName }
+                    ];
+                    transactionsData = transactionsData.filter(t => {
+                        if (cicilanTrxIds.includes(t.id)) return false;
+                        return !prefixes.some(p => t.category === p.cat && String(t.note || '').indexOf(p.prefix) === 0);
+                    });
+                    saveCache(CACHE_KEY_TRX, transactionsData);
+                    processData(transactionsData, true);
+                }
+
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menghapus...';
                 if (isGAS) google.script.run.withSuccessHandler(fetchData).deleteDebt(id);
                 else fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteDebt', id: id }) }).then(fetchData).catch(syncError);
+            });
+        }
+
+        function submitMyHutang(e) {
+            e.preventDefault();
+            const data = { id: 'mh_' + Date.now(), name: document.getElementById('myhutang-name').value, amount: getRawNominal(document.getElementById('myhutang-amount')), date: document.getElementById('myhutang-date').value, duedate: document.getElementById('myhutang-duedate').value || '', note: document.getElementById('myhutang-note').value, status: 'Belum Lunas' };
+            closeMyHutangModal();
+            optimisticSaveMyHutang(data);
+            document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyimpan...';
+            const cb = () => { fetchData(); };
+            if (isGAS) google.script.run.withSuccessHandler(cb).withFailureHandler(() => {}).saveMyHutang(data);
+            else if (GAS_URL !== "") fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'saveMyHutang', data: data }) }).then(cb).catch(() => {});
+            else { saveCache(CACHE_KEY_MYHUTANG, myHutangData); document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
+        }
+
+        function payMyHutang(id) {
+            const item = myHutangData.find(d => d.id === id); if (!item) return;
+            showCustomConfirm('Bayar Hutang', `Konfirmasi pembayaran hutang ke "${item.name}" sebesar ${formatRupiah(item.amount)}?\n(Saldo dompet akan berkurang)`, 'Bayar Sekarang', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
+                const paidDate = new Date().toISOString().split('T')[0];
+                myHutangData = myHutangData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: paidDate } : d);
+                saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                processMyHutang(myHutangData, true);
+                // Kurangi saldo: catat sebagai pengeluaran "Bayar Hutang"
+                const trx = { id: 'trx_paymh_' + Date.now(), type: 'Pengeluaran', amount: item.amount, category: 'Bayar Hutang', date: paidDate, note: 'Bayar hutang ke ' + item.name, timestamp: new Date().toISOString() };
+                optimisticSaveTrx(trx, true);
+                document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Proses...';
+                if (isGAS) google.script.run.withSuccessHandler(fetchData).payMyHutang(id);
+                else if (GAS_URL !== "") fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'payMyHutang', id: id }) }).then(fetchData).catch(() => { fetchData(); });
+                else { document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
+            });
+        }
+
+        function deleteMyHutang(id) {
+            showCustomConfirm('Hapus Hutang', 'Hapus catatan hutang ini beserta riwayat transaksinya (Hutang Masuk & Bayar Hutang) dari dompet?', 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
+                const item = myHutangData.find(d => d.id === id);
+                const hutangName = item ? item.name : null;
+
+                // Kumpulkan semua trxId dari cicilan hutang ini
+                const cicilanTrxIds = item ? (item.cicilan || []).map(c => c.trxId).filter(Boolean) : [];
+
+                myHutangData = myHutangData.filter(d => d.id !== id);
+                saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                processMyHutang(myHutangData, true);
+
+                // Hapus transaksi riwayat terkait: transaksi awal + semua cicilan
+                if (hutangName) {
+                    const prefixes = [
+                        { cat: 'Hutang Masuk',  prefix: 'Hutang dari '       + hutangName },
+                        { cat: 'Bayar Hutang',  prefix: 'Bayar hutang ke '   + hutangName },
+                        { cat: 'Bayar Hutang',  prefix: 'Cicilan hutang ke '  + hutangName }
+                    ];
+                    transactionsData = transactionsData.filter(t => {
+                        if (cicilanTrxIds.includes(t.id)) return false;
+                        return !prefixes.some(p => t.category === p.cat && String(t.note || '').indexOf(p.prefix) === 0);
+                    });
+                    saveCache(CACHE_KEY_TRX, transactionsData);
+                    processData(transactionsData, true);
+                }
+
+                document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menghapus...';
+                if (isGAS) google.script.run.withSuccessHandler(fetchData).deleteMyHutang(id);
+                else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteMyHutang', id: id }) }).then(fetchData).catch(() => {});
+                else { document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
+            });
+        }
+
+        // ===================== FITUR CICILAN =====================
+
+        // --- Modal Cicil Piutang ---
+        function openCicilanDebtModal(id) {
+            const debt = debtsData.find(d => d.id === id); if (!debt) return;
+            const paid = getDebtPaid(debt);
+            const sisa = Math.max(0, Number(debt.amount) - paid);
+            document.getElementById('cicilan-debt-id').value = id;
+            document.getElementById('cicilan-debt-nama').innerText = debt.name;
+            document.getElementById('cicilan-debt-total').innerText = formatRupiah(Number(debt.amount));
+            document.getElementById('cicilan-debt-terbayar').innerText = formatRupiah(paid);
+            document.getElementById('cicilan-debt-sisa').innerText = formatRupiah(sisa);
+            document.getElementById('cicilan-debt-amount').value = '';
+            document.getElementById('cicilan-debt-date').value = todayLocalDate();
+            document.getElementById('cicilan-debt-note').value = '';
+            document.getElementById('modal-cicilan-debt').classList.remove('hidden');
+            setTimeout(() => document.getElementById('modal-cicilan-debt-content').classList.remove('translate-y-full'), 10);
+        }
+        function closeCicilanDebtModal() {
+            document.getElementById('modal-cicilan-debt-content').classList.add('translate-y-full');
+            setTimeout(() => document.getElementById('modal-cicilan-debt').classList.add('hidden'), 300);
+        }
+        function submitCicilanDebt(e) {
+            e.preventDefault();
+            const id = document.getElementById('cicilan-debt-id').value;
+            const debt = debtsData.find(d => d.id === id); if (!debt) return;
+            const amount = Number(getRawNominal(document.getElementById('cicilan-debt-amount')));
+            if (amount <= 0) { showCustomAlert('Nominal Salah', 'Masukkan nominal cicilan yang valid.', 'error'); return; }
+            const sisa = Math.max(0, Number(debt.amount) - getDebtPaid(debt));
+            if (amount > sisa) { showCustomAlert('Melebihi Sisa', `Cicilan tidak boleh melebihi sisa tagihan (${formatRupiah(sisa)}).`, 'error'); return; }
+            const trxId = 'trx_cc_' + Date.now();
+            const newCicilan = { id: 'cc_' + Date.now(), trxId: trxId, amount: amount, date: document.getElementById('cicilan-debt-date').value, note: document.getElementById('cicilan-debt-note').value };
+            debtsData = debtsData.map(d => {
+                if (d.id !== id) return d;
+                const cicilan = [...(d.cicilan || []), newCicilan];
+                const totalPaid = cicilan.reduce((s, c) => s + Number(c.amount), 0);
+                const isNowLunas = totalPaid >= Number(d.amount);
+                return { ...d, cicilan, status: isNowLunas ? 'Lunas' : d.status, paidDate: isNowLunas ? newCicilan.date : d.paidDate };
+            });
+            saveCache(CACHE_KEY_DEBT, debtsData);
+            processDebts(debtsData, true);
+            // Catat ke dompet sebagai Pemasukan (simpan trxId agar bisa dihapus bersama)
+            const trx = { id: trxId, type: 'Pemasukan', amount: amount, category: 'Bayar Piutang', date: newCicilan.date, note: 'Cicilan piutang dari ' + debt.name + (newCicilan.note ? ' - ' + newCicilan.note : ''), timestamp: new Date().toISOString() };
+            optimisticSaveTrx(trx, true);
+            closeCicilanDebtModal();
+            const totalPaidNow = getDebtPaid(debtsData.find(d => d.id === id));
+            const isNowLunas = totalPaidNow >= Number(debt.amount);
+            showCustomAlert(isNowLunas ? '🎉 Piutang Lunas!' : 'Cicilan Dicatat!', isNowLunas ? `Piutang dari ${debt.name} sudah lunas! Saldo bertambah ${formatRupiah(amount)}.` : `Cicilan ${formatRupiah(amount)} dari ${debt.name} dicatat. Saldo bertambah.`, 'success');
+            document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
+        }
+
+        // --- Modal Cicil Hutang Saya ---
+        function openCicilanMyHutangModal(id) {
+            const item = myHutangData.find(d => d.id === id); if (!item) return;
+            const paid = getMyHutangPaid(item);
+            const sisa = Math.max(0, Number(item.amount) - paid);
+            document.getElementById('cicilan-mh-id').value = id;
+            document.getElementById('cicilan-mh-nama').innerText = item.name;
+            document.getElementById('cicilan-mh-total').innerText = formatRupiah(Number(item.amount));
+            document.getElementById('cicilan-mh-terbayar').innerText = formatRupiah(paid);
+            document.getElementById('cicilan-mh-sisa').innerText = formatRupiah(sisa);
+            document.getElementById('cicilan-mh-amount').value = '';
+            document.getElementById('cicilan-mh-date').value = todayLocalDate();
+            document.getElementById('cicilan-mh-note').value = '';
+            document.getElementById('modal-cicilan-mh').classList.remove('hidden');
+            setTimeout(() => document.getElementById('modal-cicilan-mh-content').classList.remove('translate-y-full'), 10);
+        }
+        function closeCicilanMyHutangModal() {
+            document.getElementById('modal-cicilan-mh-content').classList.add('translate-y-full');
+            setTimeout(() => document.getElementById('modal-cicilan-mh').classList.add('hidden'), 300);
+        }
+        function submitCicilanMyHutang(e) {
+            e.preventDefault();
+            const id = document.getElementById('cicilan-mh-id').value;
+            const item = myHutangData.find(d => d.id === id); if (!item) return;
+            const amount = Number(getRawNominal(document.getElementById('cicilan-mh-amount')));
+            if (amount <= 0) { showCustomAlert('Nominal Salah', 'Masukkan nominal cicilan yang valid.', 'error'); return; }
+            const sisa = Math.max(0, Number(item.amount) - getMyHutangPaid(item));
+            if (amount > sisa) { showCustomAlert('Melebihi Sisa', `Cicilan tidak boleh melebihi sisa hutang (${formatRupiah(sisa)}).`, 'error'); return; }
+            const trxId = 'trx_cmh_' + Date.now();
+            const newCicilan = { id: 'cmh_' + Date.now(), trxId: trxId, amount: amount, date: document.getElementById('cicilan-mh-date').value, note: document.getElementById('cicilan-mh-note').value };
+            myHutangData = myHutangData.map(d => {
+                if (d.id !== id) return d;
+                const cicilan = [...(d.cicilan || []), newCicilan];
+                const totalPaid = cicilan.reduce((s, c) => s + Number(c.amount), 0);
+                const isNowLunas = totalPaid >= Number(d.amount);
+                return { ...d, cicilan, status: isNowLunas ? 'Lunas' : d.status, paidDate: isNowLunas ? newCicilan.date : d.paidDate };
+            });
+            saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+            processMyHutang(myHutangData, true);
+            // Catat ke dompet sebagai Pengeluaran (simpan trxId agar bisa dihapus bersama)
+            const trx = { id: trxId, type: 'Pengeluaran', amount: amount, category: 'Bayar Hutang', date: newCicilan.date, note: 'Cicilan hutang ke ' + item.name + (newCicilan.note ? ' - ' + newCicilan.note : ''), timestamp: new Date().toISOString() };
+            optimisticSaveTrx(trx, true);
+            closeCicilanMyHutangModal();
+            const totalPaidNow = getMyHutangPaid(myHutangData.find(d => d.id === id));
+            const isNowLunas = totalPaidNow >= Number(item.amount);
+            showCustomAlert(isNowLunas ? '🎉 Hutang Lunas!' : 'Cicilan Dicatat!', isNowLunas ? `Hutang ke ${item.name} sudah lunas! Saldo berkurang ${formatRupiah(amount)}.` : `Cicilan ${formatRupiah(amount)} ke ${item.name} dicatat. Saldo berkurang.`, 'success');
+            document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
+        }
+
+        // --- Modal Riwayat Cicilan ---
+        function openRiwayatCicilanModal(id, type) {
+            let item, isPiutang = (type === 'piutang');
+            if (isPiutang) item = debtsData.find(d => d.id === id);
+            else item = myHutangData.find(d => d.id === id);
+            if (!item) return;
+            const cicilan = (item.cicilan || []).slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+            const paid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
+            const sisa = Math.max(0, Number(item.amount) - paid);
+            const pct = Number(item.amount) > 0 ? Math.min(100, Math.round(paid / Number(item.amount) * 100)) : 0;
+            document.getElementById('riwayat-cicilan-title').innerText = isPiutang ? `Cicilan Piutang — ${item.name}` : `Cicilan Hutang — ${item.name}`;
+            document.getElementById('riwayat-cicilan-total').innerText = formatRupiah(Number(item.amount));
+            document.getElementById('riwayat-cicilan-terbayar').innerText = formatRupiah(paid);
+            document.getElementById('riwayat-cicilan-sisa').innerText = formatRupiah(sisa);
+            document.getElementById('riwayat-cicilan-pct').innerText = pct + '%';
+            document.getElementById('riwayat-cicilan-bar').style.width = pct + '%';
+            document.getElementById('riwayat-cicilan-bar').className = 'h-full rounded-full transition-all ' + (isPiutang ? 'bg-blue-400' : 'bg-red-400');
+            const accentColor = isPiutang ? 'text-blue-600' : 'text-red-600';
+            const list = cicilan.length === 0
+                ? `<div class="p-6 text-center text-gray-400 text-sm">Belum ada cicilan tercatat.</div>`
+                : cicilan.map((c, i) => `
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">${cicilan.length - i}</div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-700">${formatRupiah(Number(c.amount))}</p>
+                                <p class="text-[10px] text-gray-400">${formatDate(c.date)}${c.note ? ' • ' + c.note : ''}</p>
+                            </div>
+                        </div>
+                        <button onclick="hapusCicilan('${id}','${c.id}','${type}')" class="text-red-300 hover:text-red-500 w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-50 transition"><i class="fas fa-trash text-xs"></i></button>
+                    </div>`).join('');
+            document.getElementById('riwayat-cicilan-list').innerHTML = list;
+            document.getElementById('modal-riwayat-cicilan').classList.remove('hidden');
+            setTimeout(() => document.getElementById('modal-riwayat-cicilan-content').classList.remove('scale-95'), 10);
+        }
+        function closeRiwayatCicilanModal() {
+            document.getElementById('modal-riwayat-cicilan-content').classList.add('scale-95');
+            setTimeout(() => document.getElementById('modal-riwayat-cicilan').classList.add('hidden'), 200);
+        }
+        function hapusCicilan(parentId, cicilanId, type) {
+            showCustomConfirm('Hapus Cicilan', 'Hapus catatan cicilan ini? Transaksi riwayat terkait juga akan ikut dihapus.', 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
+                let trxIdToDelete = null;
+
+                if (type === 'piutang') {
+                    // Cari trxId dari cicilan sebelum dihapus
+                    const debt = debtsData.find(d => d.id === parentId);
+                    if (debt) {
+                        const cicObj = (debt.cicilan || []).find(c => c.id === cicilanId);
+                        if (cicObj) trxIdToDelete = cicObj.trxId || null;
+                    }
+
+                    debtsData = debtsData.map(d => {
+                        if (d.id !== parentId) return d;
+                        const cicilan = (d.cicilan || []).filter(c => c.id !== cicilanId);
+                        const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
+                        const isNowLunas = totalPaid >= Number(d.amount);
+                        return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? d.paidDate : '' };
+                    });
+                    saveCache(CACHE_KEY_DEBT, debtsData);
+                    processDebts(debtsData, true);
+
+                    // Sync cicilan ke server (GAS)
+                    const updatedDebt = debtsData.find(d => d.id === parentId);
+                    if (updatedDebt) {
+                        if (isGAS) google.script.run.updateDebtCicilan(parentId, updatedDebt.cicilan || []);
+                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: parentId, cicilan: updatedDebt.cicilan || [] }) }).catch(() => {});
+                    }
+                } else {
+                    // Cari trxId dari cicilan sebelum dihapus
+                    const item = myHutangData.find(d => d.id === parentId);
+                    if (item) {
+                        const cicObj = (item.cicilan || []).find(c => c.id === cicilanId);
+                        if (cicObj) trxIdToDelete = cicObj.trxId || null;
+                    }
+
+                    myHutangData = myHutangData.map(d => {
+                        if (d.id !== parentId) return d;
+                        const cicilan = (d.cicilan || []).filter(c => c.id !== cicilanId);
+                        const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
+                        const isNowLunas = totalPaid >= Number(d.amount);
+                        return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? d.paidDate : '' };
+                    });
+                    saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                    processMyHutang(myHutangData, true);
+
+                    // Sync cicilan ke server (GAS)
+                    const updatedItem = myHutangData.find(d => d.id === parentId);
+                    if (updatedItem) {
+                        if (isGAS) google.script.run.updateMyHutangCicilan(parentId, updatedItem.cicilan || []);
+                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: parentId, cicilan: updatedItem.cicilan || [] }) }).catch(() => {});
+                    }
+                }
+
+                // Hapus transaksi riwayat terkait (jika ada trxId tersimpan)
+                if (trxIdToDelete) {
+                    optimisticDeleteTrx(trxIdToDelete);
+                    if (isGAS) google.script.run.deleteTransaction(trxIdToDelete);
+                    else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteTransaction', id: trxIdToDelete }) }).catch(() => {});
+                }
+
+                // Refresh tampilan modal riwayat cicilan
+                closeRiwayatCicilanModal();
+                setTimeout(() => openRiwayatCicilanModal(parentId, type), 350);
+
+                showCustomAlert('Cicilan Dihapus', 'Catatan cicilan dan transaksi riwayatnya berhasil dihapus.', 'success');
             });
         }
 
