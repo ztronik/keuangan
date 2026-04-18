@@ -505,6 +505,27 @@
         </div>
     </div>
 
+    <!-- Modal: Edit Nominal Piutang/Hutang -->
+    <div id="modal-edit-nominal" class="fixed inset-0 bg-gray-900/60 z-[60] hidden flex items-center justify-center backdrop-blur-sm px-4">
+        <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl transform scale-95 transition-transform" id="modal-edit-nominal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-gray-800 text-base" id="edit-nominal-title">Edit Nominal</h3>
+                <button onclick="closeEditNominalModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="text-xs text-gray-500 mb-4" id="edit-nominal-desc">Ubah nominal tagihan. Perubahan ini tidak mempengaruhi catatan riwayat sebelumnya.</p>
+            <input type="hidden" id="edit-nominal-id">
+            <input type="hidden" id="edit-nominal-type">
+            <div class="mb-5">
+                <label class="block text-sm font-semibold mb-1.5">Nominal Baru (Rp)</label>
+                <input type="text" id="edit-nominal-amount" inputmode="numeric" required placeholder="0" class="w-full bg-gray-50 border rounded-xl py-3 px-4 font-semibold text-lg outline-none focus:border-emerald-500" oninput="formatNominalInput(this)">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeEditNominalModal()" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 active:scale-95 transition-all">Batal</button>
+                <button onclick="submitEditNominal()" class="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 active:scale-95 transition-all shadow-lg">Simpan</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Variabel Otentikasi & Setting
         let isLoggedIn = localStorage.getItem('is_logged_in') === 'true';
@@ -831,7 +852,12 @@
             saveCache(CACHE_KEY_DEBT, debtsData);
             processDebts(debtsData, true);
             // Kurangi saldo dompet: catat sebagai pengeluaran "Piutang Keluar"
-            const trx = { id: 'trx_debt_' + Date.now(), type: 'Pengeluaran', amount: newDebt.amount, category: 'Piutang Keluar', date: newDebt.date, note: 'Piutang ke ' + newDebt.name, timestamp: new Date().toISOString() };
+            const trxId = 'trx_debt_' + Date.now();
+            const trx = { id: trxId, type: 'Pengeluaran', amount: newDebt.amount, category: 'Piutang Keluar', date: newDebt.date, note: 'Piutang ke ' + newDebt.name, timestamp: new Date().toISOString() };
+            // Simpan trxIdUtama ke debt agar sinkronisasi riwayat bisa melacaknya
+            debtsData = debtsData.map(d => d.id === newDebt.id ? { ...d, trxIdUtama: trxId } : d);
+            saveCache(CACHE_KEY_DEBT, debtsData);
+            saveDebtTrxMap();
             optimisticSaveTrx(trx, true);
         }
         function optimisticSaveMyHutang(newItem) {
@@ -839,12 +865,49 @@
             saveCache(CACHE_KEY_MYHUTANG, myHutangData);
             processMyHutang(myHutangData, true);
             // Tambah saldo dompet: catat sebagai pemasukan "Hutang Masuk"
-            const trx = { id: 'trx_mh_' + Date.now(), type: 'Pemasukan', amount: newItem.amount, category: 'Hutang Masuk', date: newItem.date, note: 'Hutang dari ' + newItem.name, timestamp: new Date().toISOString() };
+            const trxId = 'trx_mh_' + Date.now();
+            const trx = { id: trxId, type: 'Pemasukan', amount: newItem.amount, category: 'Hutang Masuk', date: newItem.date, note: 'Hutang dari ' + newItem.name, timestamp: new Date().toISOString() };
+            // Simpan trxIdUtama ke myHutang agar sinkronisasi riwayat bisa melacaknya
+            myHutangData = myHutangData.map(d => d.id === newItem.id ? { ...d, trxIdUtama: trxId } : d);
+            saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+            saveMhTrxMap();
             optimisticSaveTrx(trx, true);
         }
 
+        // ─── Persistensi trxIdUtama mapping ───
+        // Menyimpan { debtId: trxIdUtama } agar tidak hilang saat fetchData
+        const CACHE_KEY_DEBT_TRX_MAP = 'cache_debt_trx_map';
+        const CACHE_KEY_MH_TRX_MAP   = 'cache_mh_trx_map';
+
+        function saveDebtTrxMap() {
+            const map = {};
+            debtsData.forEach(d => { if (d.trxIdUtama) map[d.id] = d.trxIdUtama; });
+            try { localStorage.setItem(CACHE_KEY_DEBT_TRX_MAP, JSON.stringify(map)); } catch(e) {}
+            const paidMap = {};
+            debtsData.forEach(d => { if (d.paidTrxId) paidMap[d.id] = d.paidTrxId; });
+            try { localStorage.setItem(CACHE_KEY_DEBT_TRX_MAP + '_paid', JSON.stringify(paidMap)); } catch(e) {}
+        }
+        function loadDebtTrxMap() { try { const d = localStorage.getItem(CACHE_KEY_DEBT_TRX_MAP); return d ? JSON.parse(d) : {}; } catch(e) { return {}; } }
+        function loadDebtPaidTrxMap() { try { const d = localStorage.getItem(CACHE_KEY_DEBT_TRX_MAP + '_paid'); return d ? JSON.parse(d) : {}; } catch(e) { return {}; } }
+        function saveMhTrxMap() {
+            const map = {};
+            myHutangData.forEach(d => { if (d.trxIdUtama) map[d.id] = d.trxIdUtama; });
+            try { localStorage.setItem(CACHE_KEY_MH_TRX_MAP, JSON.stringify(map)); } catch(e) {}
+            const paidMap = {};
+            myHutangData.forEach(d => { if (d.paidTrxId) paidMap[d.id] = d.paidTrxId; });
+            try { localStorage.setItem(CACHE_KEY_MH_TRX_MAP + '_paid', JSON.stringify(paidMap)); } catch(e) {}
+        }
+        function loadMhTrxMap() { try { const d = localStorage.getItem(CACHE_KEY_MH_TRX_MAP); return d ? JSON.parse(d) : {}; } catch(e) { return {}; } }
+        function loadMhPaidTrxMap() { try { const d = localStorage.getItem(CACHE_KEY_MH_TRX_MAP + '_paid'); return d ? JSON.parse(d) : {}; } catch(e) { return {}; } }
+
         // --- RENDER PIUTANG ---
-        function processDebts(data, silent) { debtsData = (data || []).map(d => ({ ...d, date: safeIsoDate(d.date) })); renderDebtList(); if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
+        function processDebts(data, silent) {
+            const trxMap = loadDebtTrxMap();
+            const paidMap = loadDebtPaidTrxMap();
+            debtsData = (data || []).map(d => ({ ...d, date: safeIsoDate(d.date), trxIdUtama: d.trxIdUtama || trxMap[d.id] || null, paidTrxId: d.paidTrxId || paidMap[d.id] || null }));
+            renderDebtList();
+            if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
+        }
         function getDebtPaid(debt) { return (debt.cicilan || []).reduce((s,c) => s + Number(c.amount), 0); }
         function renderDebtList() {
             const container = document.getElementById('all-debts'); let totalHutang = 0; let totalLunas = 0;
@@ -886,24 +949,25 @@
                             <button onclick="openCicilanDebtModal('${debt.id}')" class="text-xs bg-blue-500 text-white px-2.5 py-1.5 rounded shadow-sm hover:bg-blue-600 flex items-center gap-1"><i class="fas fa-coins"></i> Cicil</button>
                             <button onclick="markAsPaid('${debt.id}')" class="text-xs bg-emerald-500 text-white px-2.5 py-1.5 rounded shadow-sm hover:bg-emerald-600 flex items-center gap-1"><i class="fas fa-check"></i> Lunas</button>
                            </div>`;
-                    html += `<div class="p-4 border-b border-gray-50 ${isLunas ? 'opacity-60 bg-gray-50' : 'bg-white'}">
+                    html += `<div class="p-4 border-b border-gray-50 ${isLunas ? 'bg-gray-50' : 'bg-white'}">
                         <div class="flex items-start justify-between">
-                            <div class="flex items-center gap-3 overflow-hidden flex-1">
+                            <div class="flex items-center gap-3 overflow-hidden flex-1 ${isLunas ? 'opacity-60' : ''}">
                                 <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isLunas ? 'bg-emerald-50 text-emerald-500' : 'bg-orange-50 text-orange-500'}">
                                     <i class="fas ${isLunas ? 'fa-check-circle' : 'fa-user-clock'}"></i>
                                 </div>
                                 <div class="overflow-hidden flex-1">
                                     <p class="font-bold text-gray-800 truncate ${isLunas ? 'line-through decoration-gray-400' : ''}">${debt.name}</p>
                                     <p class="text-[10px] text-gray-500">${formatDate(debt.date)} ${debt.note ? '• '+debt.note : ''}</p>
-                                    <p class="font-bold text-gray-800 text-sm mt-0.5">${formatRupiah(totalAmt)}</p>
+                                    <p class="font-bold ${isLunas ? 'text-gray-400' : 'text-gray-800'} text-sm mt-0.5">${formatRupiah(totalAmt)}</p>
                                     ${progressBar}
                                 </div>
                             </div>
                             <div class="flex flex-col items-end flex-shrink-0 ml-2 gap-1.5">
                                 ${btnActions}
                                 <div class="flex gap-1 mt-1">
-                                    ${hasCicilan && !isLunas ? `<button onclick="openRiwayatCicilanModal('${debt.id}','piutang')" class="text-gray-400 hover:text-blue-500 w-6 h-6 flex items-center justify-center" title="Riwayat Cicilan"><i class="fas fa-history text-xs"></i></button>` : ''}
-                                    ${!isLunas ? `<button onclick="deleteDebt('${debt.id}')" class="text-red-300 hover:text-red-500 w-6 h-6 flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>` : ''}
+                                    ${hasCicilan ? `<button onclick="openRiwayatCicilanModal('${debt.id}','piutang')" class="text-gray-400 hover:text-blue-500 w-6 h-6 flex items-center justify-center" title="Riwayat Cicilan"><i class="fas fa-history text-xs"></i></button>` : ''}
+                                    <button onclick="openEditNominalModal('${debt.id}','piutang')" class="text-blue-300 hover:text-blue-500 w-6 h-6 flex items-center justify-center" title="Edit Nominal"><i class="fas fa-pen text-xs"></i></button>
+                                    <button onclick="deleteDebt('${debt.id}')" class="text-red-300 hover:text-red-500 w-6 h-6 flex items-center justify-center" title="Hapus"><i class="fas fa-trash text-xs"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -914,7 +978,13 @@
         }
 
         // --- RENDER HUTANG SAYA ---
-        function processMyHutang(data, silent) { myHutangData = (data || []).map(d => ({ ...d, date: safeIsoDate(d.date) })); renderMyHutangList(); if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron'; }
+        function processMyHutang(data, silent) {
+            const trxMap = loadMhTrxMap();
+            const paidMap = loadMhPaidTrxMap();
+            myHutangData = (data || []).map(d => ({ ...d, date: safeIsoDate(d.date), trxIdUtama: d.trxIdUtama || trxMap[d.id] || null, paidTrxId: d.paidTrxId || paidMap[d.id] || null }));
+            renderMyHutangList();
+            if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
+        }
         function getMyHutangPaid(item) { return (item.cicilan || []).reduce((s,c) => s + Number(c.amount), 0); }
         function renderMyHutangList() {
             const container = document.getElementById('all-myhutang');
@@ -961,9 +1031,9 @@
                             <button onclick="openCicilanMyHutangModal('${item.id}')" class="text-xs bg-orange-500 text-white px-2.5 py-1.5 rounded shadow-sm hover:bg-orange-600 flex items-center gap-1"><i class="fas fa-coins"></i> Cicil</button>
                             <button onclick="payMyHutang('${item.id}')" class="text-xs bg-red-500 text-white px-2.5 py-1.5 rounded shadow-sm hover:bg-red-600 flex items-center gap-1"><i class="fas fa-check"></i> Lunas</button>
                            </div>`;
-                    html += `<div class="p-4 border-b border-gray-50 ${isLunas ? 'opacity-60 bg-gray-50' : 'bg-white'}">
+                    html += `<div class="p-4 border-b border-gray-50 ${isLunas ? 'bg-gray-50' : 'bg-white'}">
                         <div class="flex items-start justify-between">
-                            <div class="flex items-center gap-3 overflow-hidden flex-1">
+                            <div class="flex items-center gap-3 overflow-hidden flex-1 ${isLunas ? 'opacity-60' : ''}">
                                 <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isLunas ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-500'}">
                                     <i class="fas ${isLunas ? 'fa-check-circle' : 'fa-hand-point-left'}"></i>
                                 </div>
@@ -971,15 +1041,16 @@
                                     <p class="font-bold text-gray-800 truncate ${isLunas ? 'line-through decoration-gray-400' : ''}">dari ${item.name}</p>
                                     <p class="text-[10px] text-gray-500">${formatDate(item.date)} ${item.note ? '• '+item.note : ''}</p>
                                     ${dueInfo}
-                                    <p class="font-bold ${isLunas ? 'text-gray-500' : 'text-red-500'} text-sm mt-0.5">${formatRupiah(totalAmt)}</p>
+                                    <p class="font-bold ${isLunas ? 'text-gray-400' : 'text-red-500'} text-sm mt-0.5">${formatRupiah(totalAmt)}</p>
                                     ${progressBar}
                                 </div>
                             </div>
                             <div class="flex flex-col items-end flex-shrink-0 ml-2 gap-1.5">
                                 ${btnActions}
                                 <div class="flex gap-1 mt-1">
-                                    ${hasCicilan && !isLunas ? `<button onclick="openRiwayatCicilanModal('${item.id}','myhutang')" class="text-gray-400 hover:text-orange-500 w-6 h-6 flex items-center justify-center" title="Riwayat Cicilan"><i class="fas fa-history text-xs"></i></button>` : ''}
-                                    ${!isLunas ? `<button onclick="deleteMyHutang('${item.id}')" class="text-red-300 hover:text-red-500 w-6 h-6 flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>` : ''}
+                                    ${hasCicilan ? `<button onclick="openRiwayatCicilanModal('${item.id}','myhutang')" class="text-gray-400 hover:text-orange-500 w-6 h-6 flex items-center justify-center" title="Riwayat Cicilan"><i class="fas fa-history text-xs"></i></button>` : ''}
+                                    <button onclick="openEditNominalModal('${item.id}','myhutang')" class="text-blue-300 hover:text-blue-500 w-6 h-6 flex items-center justify-center" title="Edit Nominal"><i class="fas fa-pen text-xs"></i></button>
+                                    <button onclick="deleteMyHutang('${item.id}')" class="text-red-300 hover:text-red-500 w-6 h-6 flex items-center justify-center" title="Hapus"><i class="fas fa-trash text-xs"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -1208,6 +1279,39 @@
         }
 
         // --- CRUD ACTIONS MENGGUNAKAN POPUP CUSTOM ---
+
+        // Helper: cari piutang/hutang yang memiliki trxId cicilan === id
+        function findDebtByCicilanTrxId(id) {
+            return debtsData.find(d => (d.cicilan || []).some(c => c.trxId === id));
+        }
+        function findMyHutangByCicilanTrxId(id) {
+            return myHutangData.find(d => (d.cicilan || []).some(c => c.trxId === id));
+        }
+        // Helper: cari piutang/hutang yang menjadi sumber transaksi utama ini
+        // Cari via trxIdUtama (data baru), atau fallback via note pattern (data lama)
+        function findDebtByMainTrxId(trxId) {
+            // Cara 1: via trxIdUtama
+            const byId = debtsData.find(d => d.trxIdUtama === trxId);
+            if (byId) return byId;
+            // Cara 2: fallback — cari transaksi dulu, lalu cocokkan via note "Piutang ke <nama>"
+            const trx = transactionsData.find(t => t.id === trxId);
+            if (!trx || trx.category !== 'Piutang Keluar') return null;
+            const notePrefix = 'Piutang ke ';
+            if (!String(trx.note || '').startsWith(notePrefix)) return null;
+            const namaFromNote = String(trx.note).slice(notePrefix.length);
+            return debtsData.find(d => d.name === namaFromNote) || null;
+        }
+        function findMyHutangByMainTrxId(trxId) {
+            const byId = myHutangData.find(d => d.trxIdUtama === trxId);
+            if (byId) return byId;
+            const trx = transactionsData.find(t => t.id === trxId);
+            if (!trx || trx.category !== 'Hutang Masuk') return null;
+            const notePrefix = 'Hutang dari ';
+            if (!String(trx.note || '').startsWith(notePrefix)) return null;
+            const namaFromNote = String(trx.note).slice(notePrefix.length);
+            return myHutangData.find(d => d.name === namaFromNote) || null;
+        }
+
         function submitTransaction(e) {
             e.preventDefault();
             const dispEl = document.getElementById('input-date-display');
@@ -1216,7 +1320,95 @@
             document.getElementById('input-date').value = iso;
             let catValue = document.getElementById('input-category').value; if (catValue === 'Custom') catValue = document.getElementById('input-category-custom').value;
             const editId = document.getElementById('edit-id').value;
-            const data = { id: editId || ('tmp_' + Date.now()), type: document.querySelector('input[name="type"]:checked').value, amount: getRawNominal(document.getElementById('input-amount')), category: catValue, date: iso, note: document.getElementById('input-note').value, timestamp: new Date().toISOString() };
+            const data = { id: editId || ('tmp_' + Date.now()), type: document.querySelector('input[name="type"]:checked').value, amount: Number(getRawNominal(document.getElementById('input-amount'))), category: catValue, date: iso, note: document.getElementById('input-note').value, timestamp: new Date().toISOString() };
+
+            // ── Sinkronisasi ke piutang/hutang jika ini adalah edit ──
+            if (editId) {
+                const newAmt = Number(data.amount);
+
+                // 1) Edit cicilan piutang → update nominal cicilan & recalculate status
+                let debtCicilanChanged = false;
+                debtsData = debtsData.map(d => {
+                    const cicIdx = (d.cicilan || []).findIndex(c => c.trxId === editId);
+                    if (cicIdx === -1) return d;
+                    const cicilan = [...d.cicilan];
+                    cicilan[cicIdx] = { ...cicilan[cicIdx], amount: newAmt, date: data.date, note: data.note || cicilan[cicIdx].note };
+                    const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
+                    const isNowLunas = totalPaid >= Number(d.amount);
+                    debtCicilanChanged = true;
+                    return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || iso) : '' };
+                });
+                if (debtCicilanChanged) {
+                    saveCache(CACHE_KEY_DEBT, debtsData);
+                    processDebts(debtsData, true);
+                    debtsData.forEach(d => {
+                        if (!(d.cicilan || []).some(c => c.trxId === editId)) return;
+                        if (isGAS) google.script.run.updateDebtCicilan(d.id, d.cicilan || []);
+                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                    });
+                }
+
+                // 2) Edit cicilan hutang saya → update nominal cicilan & recalculate status
+                let mhCicilanChanged = false;
+                myHutangData = myHutangData.map(d => {
+                    const cicIdx = (d.cicilan || []).findIndex(c => c.trxId === editId);
+                    if (cicIdx === -1) return d;
+                    const cicilan = [...d.cicilan];
+                    cicilan[cicIdx] = { ...cicilan[cicIdx], amount: newAmt, date: data.date, note: data.note || cicilan[cicIdx].note };
+                    const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
+                    const isNowLunas = totalPaid >= Number(d.amount);
+                    mhCicilanChanged = true;
+                    return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || iso) : '' };
+                });
+                if (mhCicilanChanged) {
+                    saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                    processMyHutang(myHutangData, true);
+                    myHutangData.forEach(d => {
+                        if (!(d.cicilan || []).some(c => c.trxId === editId)) return;
+                        if (isGAS) google.script.run.updateMyHutangCicilan(d.id, d.cicilan || []);
+                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                    });
+                }
+
+                // 3) Edit transaksi UTAMA piutang → update nominal di debtsData (dengan fallback)
+                const changedDebt = findDebtByMainTrxId(editId);
+                if (changedDebt) {
+                    // Jika ditemukan via fallback, simpan trxIdUtama supaya ke depannya cepat
+                    if (!changedDebt.trxIdUtama) {
+                        debtsData = debtsData.map(d => d.id === changedDebt.id ? { ...d, trxIdUtama: editId } : d);
+                        saveDebtTrxMap();
+                    }
+                    debtsData = debtsData.map(d => {
+                        if (d.id !== changedDebt.id) return d;
+                        const totalPaid = (d.cicilan || []).reduce((s,c) => s + Number(c.amount), 0);
+                        const isNowLunas = totalPaid >= newAmt;
+                        return { ...d, amount: newAmt, date: data.date, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || iso) : '' };
+                    });
+                    saveCache(CACHE_KEY_DEBT, debtsData);
+                    processDebts(debtsData, true);
+                    if (isGAS) google.script.run.updateDebtNominal(changedDebt.id, newAmt);
+                    else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtNominal', id: changedDebt.id, amount: newAmt }) }).catch(() => {});
+                }
+
+                // 4) Edit transaksi UTAMA hutang saya → update nominal di myHutangData (dengan fallback)
+                const changedMh = findMyHutangByMainTrxId(editId);
+                if (changedMh) {
+                    if (!changedMh.trxIdUtama) {
+                        myHutangData = myHutangData.map(d => d.id === changedMh.id ? { ...d, trxIdUtama: editId } : d);
+                        saveMhTrxMap();
+                    }
+                    myHutangData = myHutangData.map(d => {
+                        if (d.id !== changedMh.id) return d;
+                        const totalPaid = (d.cicilan || []).reduce((s,c) => s + Number(c.amount), 0);
+                        const isNowLunas = totalPaid >= newAmt;
+                        return { ...d, amount: newAmt, date: data.date, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || iso) : '' };
+                    });
+                    saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                    processMyHutang(myHutangData, true);
+                    if (isGAS) google.script.run.updateMyHutangNominal(changedMh.id, newAmt);
+                    else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangNominal', id: changedMh.id, amount: newAmt }) }).catch(() => {});
+                }
+            }
 
             // Optimistic: tutup modal & update UI langsung
             closeModal();
@@ -1224,7 +1416,7 @@
 
             // Sync ke server di background
             document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyimpan...';
-            const syncCb = (res) => { fetchData(); }; // refresh dari server untuk dapat ID asli
+            const syncCb = (res) => { fetchData(); };
             if (isGAS) { if (editId) google.script.run.withSuccessHandler(syncCb).updateTransaction(data); else google.script.run.withSuccessHandler(syncCb).saveTransaction(data); }
             else if (GAS_URL !== "") fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: editId ? 'updateTransaction' : 'saveTransaction', data: data }) }).then(res => res.json()).then(syncCb).catch(syncError);
         }
@@ -1244,49 +1436,131 @@
 
         function deleteTransaction(id) {
             showCustomConfirm('Hapus Transaksi', 'Apakah Anda yakin ingin menghapus transaksi ini selamanya?', 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
-                // Sebelum hapus, cek apakah transaksi ini adalah cicilan hutang/piutang
                 const trx = transactionsData.find(t => t.id === id);
                 if (trx) {
-                    // Cek apakah trxId ini ada di cicilan piutang
-                    let debtChanged = false;
-                    debtsData = debtsData.map(d => {
-                        const hasCic = (d.cicilan || []).some(c => c.trxId === id || c.id === id);
-                        if (!hasCic) return d;
-                        const cicilan = (d.cicilan || []).filter(c => c.trxId !== id && c.id !== id);
-                        const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
-                        const isNowLunas = totalPaid >= Number(d.amount);
-                        debtChanged = true;
-                        return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? d.paidDate : '' };
-                    });
-                    if (debtChanged) {
+                    // ── Cek apakah ini TRANSAKSI UTAMA piutang (via trxIdUtama atau note-pattern) ──
+                    const mainDebt = findDebtByMainTrxId(id);
+                    if (mainDebt) {
+                        const cicilanTrxIds = (mainDebt.cicilan || []).map(c => c.trxId).filter(Boolean);
+                        debtsData = debtsData.filter(d => d.id !== mainDebt.id);
                         saveCache(CACHE_KEY_DEBT, debtsData);
+                        saveDebtTrxMap();
                         processDebts(debtsData, true);
-                        // Sync cicilan ke server
-                        debtsData.forEach(d => {
-                            if (isGAS) google.script.run.updateDebtCicilan(d.id, d.cicilan || []);
-                            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
-                        });
+                        // Hapus juga semua cicilan dari riwayat
+                        if (cicilanTrxIds.length > 0) {
+                            transactionsData = transactionsData.filter(t => !cicilanTrxIds.includes(t.id));
+                            saveCache(CACHE_KEY_TRX, transactionsData);
+                        }
+                        if (isGAS) google.script.run.deleteDebt(mainDebt.id);
+                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteDebt', id: mainDebt.id }) }).catch(() => {});
                     }
 
-                    // Cek apakah trxId ini ada di cicilan hutang saya
-                    let mhChanged = false;
-                    myHutangData = myHutangData.map(d => {
-                        const hasCic = (d.cicilan || []).some(c => c.trxId === id || c.id === id);
-                        if (!hasCic) return d;
-                        const cicilan = (d.cicilan || []).filter(c => c.trxId !== id && c.id !== id);
-                        const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
-                        const isNowLunas = totalPaid >= Number(d.amount);
-                        mhChanged = true;
-                        return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? d.paidDate : '' };
-                    });
-                    if (mhChanged) {
+                    // ── Cek apakah ini TRANSAKSI UTAMA hutang saya (via trxIdUtama atau note-pattern) ──
+                    const mainMh = findMyHutangByMainTrxId(id);
+                    if (mainMh) {
+                        const cicilanTrxIds = (mainMh.cicilan || []).map(c => c.trxId).filter(Boolean);
+                        myHutangData = myHutangData.filter(d => d.id !== mainMh.id);
                         saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                        saveMhTrxMap();
                         processMyHutang(myHutangData, true);
-                        // Sync cicilan ke server
-                        myHutangData.forEach(d => {
-                            if (isGAS) google.script.run.updateMyHutangCicilan(d.id, d.cicilan || []);
-                            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                        if (cicilanTrxIds.length > 0) {
+                            transactionsData = transactionsData.filter(t => !cicilanTrxIds.includes(t.id));
+                            saveCache(CACHE_KEY_TRX, transactionsData);
+                        }
+                        if (isGAS) google.script.run.deleteMyHutang(mainMh.id);
+                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteMyHutang', id: mainMh.id }) }).catch(() => {});
+                    }
+
+                    // ── Cek apakah ini TRANSAKSI PELUNASAN piutang (paidTrxId atau fallback note) ──
+                    if (!mainDebt) {
+                        let paidDebt = debtsData.find(d => d.paidTrxId === id);
+                        // Fallback untuk data lama: deteksi via note pattern
+                        if (!paidDebt && trx && trx.category === 'Bayar Piutang') {
+                            const noteMatch = String(trx.note || '').match(/^Piutang lunas dari (.+)$/);
+                            if (noteMatch) {
+                                const debtName = noteMatch[1];
+                                paidDebt = debtsData.find(d => d.name === debtName && d.status === 'Lunas' && !d.paidTrxId);
+                            }
+                        }
+                        if (paidDebt) {
+                            debtsData = debtsData.map(d => d.id === paidDebt.id
+                                ? { ...d, status: 'Belum Lunas', paidDate: '', paidTrxId: null }
+                                : d
+                            );
+                            saveCache(CACHE_KEY_DEBT, debtsData);
+                            saveDebtTrxMap();
+                            processDebts(debtsData, true);
+                            if (isGAS) google.script.run.updateDebtCicilan(paidDebt.id, paidDebt.cicilan || []);
+                            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: paidDebt.id, cicilan: paidDebt.cicilan || [] }) }).catch(() => {});
+                        }
+                    }
+
+                    // ── Cek apakah ini TRANSAKSI PELUNASAN hutang saya (paidTrxId atau fallback note) ──
+                    if (!mainMh) {
+                        let paidMh = myHutangData.find(d => d.paidTrxId === id);
+                        // Fallback untuk data lama: deteksi via note pattern
+                        if (!paidMh && trx && trx.category === 'Bayar Hutang') {
+                            const noteMatch = String(trx.note || '').match(/^Bayar hutang ke (.+)$/);
+                            if (noteMatch) {
+                                const mhName = noteMatch[1];
+                                paidMh = myHutangData.find(d => d.name === mhName && d.status === 'Lunas' && !d.paidTrxId);
+                            }
+                        }
+                        if (paidMh) {
+                            myHutangData = myHutangData.map(d => d.id === paidMh.id
+                                ? { ...d, status: 'Belum Lunas', paidDate: '', paidTrxId: null }
+                                : d
+                            );
+                            saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                            saveMhTrxMap();
+                            processMyHutang(myHutangData, true);
+                            if (isGAS) google.script.run.updateMyHutangCicilan(paidMh.id, paidMh.cicilan || []);
+                            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: paidMh.id, cicilan: paidMh.cicilan || [] }) }).catch(() => {});
+                        }
+                    }
+
+                    // ── Cek apakah ini CICILAN piutang ──
+                    if (!mainDebt) {
+                        let debtChanged = false;
+                        debtsData = debtsData.map(d => {
+                            const hasCic = (d.cicilan || []).some(c => c.trxId === id || c.id === id);
+                            if (!hasCic) return d;
+                            const cicilan = (d.cicilan || []).filter(c => c.trxId !== id && c.id !== id);
+                            const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
+                            const isNowLunas = totalPaid >= Number(d.amount);
+                            debtChanged = true;
+                            return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? d.paidDate : '' };
                         });
+                        if (debtChanged) {
+                            saveCache(CACHE_KEY_DEBT, debtsData);
+                            processDebts(debtsData, true);
+                            debtsData.forEach(d => {
+                                if (isGAS) google.script.run.updateDebtCicilan(d.id, d.cicilan || []);
+                                else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                            });
+                        }
+                    }
+
+                    // ── Cek apakah ini CICILAN hutang saya ──
+                    if (!mainMh) {
+                        let mhChanged = false;
+                        myHutangData = myHutangData.map(d => {
+                            const hasCic = (d.cicilan || []).some(c => c.trxId === id || c.id === id);
+                            if (!hasCic) return d;
+                            const cicilan = (d.cicilan || []).filter(c => c.trxId !== id && c.id !== id);
+                            const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
+                            const isNowLunas = totalPaid >= Number(d.amount);
+                            mhChanged = true;
+                            return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? d.paidDate : '' };
+                        });
+                        if (mhChanged) {
+                            saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                            processMyHutang(myHutangData, true);
+                            myHutangData.forEach(d => {
+                                if (isGAS) google.script.run.updateMyHutangCicilan(d.id, d.cicilan || []);
+                                else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                            });
+                        }
                     }
                 }
 
@@ -1312,12 +1586,14 @@
             showCustomConfirm('Tandai Lunas', 'Uang hutang sudah Anda terima? (Otomatis menambah saldo pemasukan)', 'Terima Lunas', 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30', () => {
                 const debt = debtsData.find(d => d.id === id); if (!debt) return;
                 const paidDate = new Date().toISOString().split('T')[0];
-                // Optimistic: update status lokal langsung
-                debtsData = debtsData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: paidDate } : d);
+                const paidTrxId = 'trx_paid_' + Date.now();
+                // Optimistic: update status lokal langsung + simpan paidTrxId
+                debtsData = debtsData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: paidDate, paidTrxId: paidTrxId } : d);
                 saveCache(CACHE_KEY_DEBT, debtsData);
+                saveDebtTrxMap();
                 processDebts(debtsData, true);
                 // Tambah saldo: catat sebagai pemasukan "Bayar Piutang"
-                const trx = { id: 'trx_paid_' + Date.now(), type: 'Pemasukan', amount: debt.amount, category: 'Bayar Piutang', date: paidDate, note: 'Piutang lunas dari ' + debt.name, timestamp: new Date().toISOString() };
+                const trx = { id: paidTrxId, type: 'Pemasukan', amount: debt.amount, category: 'Bayar Piutang', date: paidDate, note: 'Piutang lunas dari ' + debt.name, timestamp: new Date().toISOString() };
                 optimisticSaveTrx(trx, true);
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Proses...';
                 if (isGAS) google.script.run.withSuccessHandler(fetchData).payDebt(id);
@@ -1326,8 +1602,12 @@
         }
 
         function deleteDebt(id) {
-            showCustomConfirm('Batalkan Piutang', 'Hapus catatan piutang ini beserta riwayat transaksinya (Piutang Keluar & Bayar Piutang) dari dompet?', 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
-                const debt = debtsData.find(d => d.id === id);
+            const debt = debtsData.find(d => d.id === id);
+            const isLunas = debt && debt.status === 'Lunas';
+            const konfirmMsg = isLunas
+                ? 'Hapus catatan piutang yang sudah LUNAS ini? Semua cicilan terkait di riwayat juga akan dihapus.'
+                : 'Hapus catatan piutang ini beserta riwayat transaksinya (Piutang Keluar & Bayar Piutang) dari dompet?';
+            showCustomConfirm('Hapus Piutang', konfirmMsg, 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
                 const debtName = debt ? debt.name : null;
 
                 // Kumpulkan semua trxId dari cicilan piutang ini
@@ -1374,11 +1654,13 @@
             const item = myHutangData.find(d => d.id === id); if (!item) return;
             showCustomConfirm('Bayar Hutang', `Konfirmasi pembayaran hutang ke "${item.name}" sebesar ${formatRupiah(item.amount)}?\n(Saldo dompet akan berkurang)`, 'Bayar Sekarang', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
                 const paidDate = new Date().toISOString().split('T')[0];
-                myHutangData = myHutangData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: paidDate } : d);
+                const paidTrxId = 'trx_paymh_' + Date.now();
+                myHutangData = myHutangData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: paidDate, paidTrxId: paidTrxId } : d);
                 saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                saveMhTrxMap();
                 processMyHutang(myHutangData, true);
                 // Kurangi saldo: catat sebagai pengeluaran "Bayar Hutang"
-                const trx = { id: 'trx_paymh_' + Date.now(), type: 'Pengeluaran', amount: item.amount, category: 'Bayar Hutang', date: paidDate, note: 'Bayar hutang ke ' + item.name, timestamp: new Date().toISOString() };
+                const trx = { id: paidTrxId, type: 'Pengeluaran', amount: item.amount, category: 'Bayar Hutang', date: paidDate, note: 'Bayar hutang ke ' + item.name, timestamp: new Date().toISOString() };
                 optimisticSaveTrx(trx, true);
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Proses...';
                 if (isGAS) google.script.run.withSuccessHandler(fetchData).payMyHutang(id);
@@ -1388,8 +1670,12 @@
         }
 
         function deleteMyHutang(id) {
-            showCustomConfirm('Hapus Hutang', 'Hapus catatan hutang ini beserta riwayat transaksinya (Hutang Masuk & Bayar Hutang) dari dompet?', 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
-                const item = myHutangData.find(d => d.id === id);
+            const item = myHutangData.find(d => d.id === id);
+            const isLunas = item && item.status === 'Lunas';
+            const konfirmMsg = isLunas
+                ? 'Hapus catatan hutang yang sudah LUNAS ini? Semua cicilan terkait di riwayat juga akan dihapus.'
+                : 'Hapus catatan hutang ini beserta riwayat transaksinya (Hutang Masuk & Bayar Hutang) dari dompet?';
+            showCustomConfirm('Hapus Hutang', konfirmMsg, 'Hapus', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
                 const hutangName = item ? item.name : null;
 
                 // Kumpulkan semua trxId dari cicilan hutang ini
@@ -1627,6 +1913,92 @@
 
                 showCustomAlert('Cicilan Dihapus', 'Catatan cicilan dan transaksi riwayatnya berhasil dihapus.', 'success');
             });
+        }
+
+        // --- EDIT NOMINAL PIUTANG / HUTANG SAYA ---
+        function openEditNominalModal(id, type) {
+            let item;
+            if (type === 'piutang') item = debtsData.find(d => d.id === id);
+            else item = myHutangData.find(d => d.id === id);
+            if (!item) return;
+            document.getElementById('edit-nominal-id').value = id;
+            document.getElementById('edit-nominal-type').value = type;
+            document.getElementById('edit-nominal-title').innerText = type === 'piutang' ? 'Edit Nominal Piutang' : 'Edit Nominal Hutang';
+            document.getElementById('edit-nominal-desc').innerText = `Nama: ${item.name} | Nominal saat ini: ${formatRupiah(Number(item.amount))}`;
+            document.getElementById('edit-nominal-amount').value = Number(item.amount).toLocaleString('id-ID');
+            const modal = document.getElementById('modal-edit-nominal');
+            modal.classList.remove('hidden');
+            setTimeout(() => document.getElementById('modal-edit-nominal-content').classList.remove('scale-95'), 10);
+        }
+        function closeEditNominalModal() {
+            document.getElementById('modal-edit-nominal-content').classList.add('scale-95');
+            setTimeout(() => document.getElementById('modal-edit-nominal').classList.add('hidden'), 200);
+        }
+        function submitEditNominal() {
+            const id = document.getElementById('edit-nominal-id').value;
+            const type = document.getElementById('edit-nominal-type').value;
+            const newAmount = Number(getRawNominal(document.getElementById('edit-nominal-amount')));
+            if (!newAmount || newAmount <= 0) { showCustomAlert('Nominal Tidak Valid', 'Masukkan nominal yang benar.', 'error'); return; }
+
+            if (type === 'piutang') {
+                const debt = debtsData.find(d => d.id === id); if (!debt) return;
+                // 1) Update debtsData
+                debtsData = debtsData.map(d => {
+                    if (d.id !== id) return d;
+                    const totalPaid = (d.cicilan || []).reduce((s, c) => s + Number(c.amount), 0);
+                    const isNowLunas = totalPaid >= newAmount;
+                    return { ...d, amount: newAmount, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || new Date().toISOString().split('T')[0]) : '' };
+                });
+                saveCache(CACHE_KEY_DEBT, debtsData);
+                processDebts(debtsData, true);
+                // 2) Update transaksi UTAMA di riwayat (trxIdUtama)
+                if (debt.trxIdUtama) {
+                    transactionsData = transactionsData.map(t =>
+                        t.id === debt.trxIdUtama ? { ...t, amount: newAmount } : t
+                    );
+                    saveCache(CACHE_KEY_TRX, transactionsData);
+                    processData(transactionsData, true);
+                    // Sync transaksi ke server
+                    const trxToUpdate = transactionsData.find(t => t.id === debt.trxIdUtama);
+                    if (trxToUpdate) {
+                        if (isGAS) google.script.run.updateTransaction(trxToUpdate);
+                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateTransaction', data: trxToUpdate }) }).catch(() => {});
+                    }
+                }
+                // 3) Sync nominal piutang ke server
+                if (isGAS) google.script.run.withSuccessHandler(fetchData).updateDebtNominal(id, newAmount);
+                else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtNominal', id: id, amount: newAmount }) }).then(fetchData).catch(syncError);
+
+            } else {
+                const mh = myHutangData.find(d => d.id === id); if (!mh) return;
+                // 1) Update myHutangData
+                myHutangData = myHutangData.map(d => {
+                    if (d.id !== id) return d;
+                    const totalPaid = (d.cicilan || []).reduce((s, c) => s + Number(c.amount), 0);
+                    const isNowLunas = totalPaid >= newAmount;
+                    return { ...d, amount: newAmount, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || new Date().toISOString().split('T')[0]) : '' };
+                });
+                saveCache(CACHE_KEY_MYHUTANG, myHutangData);
+                processMyHutang(myHutangData, true);
+                // 2) Update transaksi UTAMA di riwayat (trxIdUtama)
+                if (mh.trxIdUtama) {
+                    transactionsData = transactionsData.map(t =>
+                        t.id === mh.trxIdUtama ? { ...t, amount: newAmount } : t
+                    );
+                    saveCache(CACHE_KEY_TRX, transactionsData);
+                    processData(transactionsData, true);
+                    const trxToUpdate = transactionsData.find(t => t.id === mh.trxIdUtama);
+                    if (trxToUpdate) {
+                        if (isGAS) google.script.run.updateTransaction(trxToUpdate);
+                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateTransaction', data: trxToUpdate }) }).catch(() => {});
+                    }
+                }
+                // 3) Sync nominal hutang ke server
+                if (isGAS) google.script.run.withSuccessHandler(fetchData).updateMyHutangNominal(id, newAmount);
+                else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangNominal', id: id, amount: newAmount }) }).then(fetchData).catch(syncError);
+            }
+            closeEditNominalModal();
+            showCustomAlert('Nominal Diperbarui', `Nominal berhasil diubah menjadi ${formatRupiah(newAmount)}.`, 'success');
         }
 
         // --- SISTEM RESET MANUAL LAPORAN REKOR ---
