@@ -1,0 +1,17 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "DompetKu",
+  "orientation": "portrait",
+  "scope": "/",
+  "short_name": "DompetKu",
+  "start_url": "./index.html",
+  "theme_color": "#ffffff",
+  "id": "com.ztronik.dompetku",
+  "description": "DompetKu",
+  "lang": "id",
+  "categories": [
+    "business"
+  ]
+}
