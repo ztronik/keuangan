@@ -533,6 +533,9 @@
         let budgetLimit = localStorage.getItem('budget_limit') || 0;
         let appName = localStorage.getItem('app_name') || 'DompetKu';
 
+        // Reset rekor — dimuat dari Google Sheet
+        let resetTimes = { inc_high: 0, inc_low: 0, exp_high: 0, exp_low: 0 };
+
         // ===== LINK GOOGLE APPS SCRIPT =====
         const GAS_URL = "https://script.google.com/macros/s/AKfycbz_MCzzsMpERC5qncLZxpIod6fz-gblYieJNp9gGNeaK9nRSXfuaTNDGxEOsOy4wJBO5A/exec";
         const isGAS = typeof google !== 'undefined' && google.script;
@@ -814,10 +817,12 @@
                 google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_TRX, d); processData(d); }).withFailureHandler(syncError).getTransactions();
                 google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_DEBT, d); processDebts(d); }).withFailureHandler(syncError).getDebts();
                 google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_MYHUTANG, d); processMyHutang(d); }).withFailureHandler(syncError).getMyHutang();
+                google.script.run.withSuccessHandler(d => { if(d) { resetTimes = d; generateReports(); } }).getResetTimes();
             } else if (GAS_URL !== "") {
                 fetch(`${GAS_URL}?action=getTransactions`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_TRX, d); processData(d); }).catch(syncError);
                 fetch(`${GAS_URL}?action=getDebts`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_DEBT, d); processDebts(d); }).catch(syncError);
                 fetch(`${GAS_URL}?action=getMyHutang`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_MYHUTANG, d); processMyHutang(d); }).catch(() => { processMyHutang(loadCache(CACHE_KEY_MYHUTANG) || [], true); });
+                fetch(`${GAS_URL}?action=getResetTimes`).then(res => res.json()).then(d => { if(d) { resetTimes = d; generateReports(); } }).catch(() => {});
             } else {
                 // Standalone mode: langsung dari cache
                 processMyHutang(loadCache(CACHE_KEY_MYHUTANG) || [], true);
@@ -2005,15 +2010,34 @@
         // --- SISTEM RESET MANUAL LAPORAN REKOR ---
         function resetReport(metric) {
             const metricNames = { 'inc_high': 'Pemasukan Terbesar', 'inc_low': 'Pemasukan Terkecil', 'exp_high': 'Pengeluaran Boros', 'exp_low': 'Pengeluaran Hemat' };
+            const metricElMap = {
+                'inc_high': { month: 'rep-inc-high-month', val: 'rep-inc-high-val' },
+                'inc_low':  { month: 'rep-inc-low-month',  val: 'rep-inc-low-val'  },
+                'exp_high': { month: 'rep-exp-high-month', val: 'rep-exp-high-val' },
+                'exp_low':  { month: 'rep-exp-low-month',  val: 'rep-exp-low-val'  }
+            };
             showCustomConfirm(
                 `Reset Rekor ${metricNames[metric]}?`,
                 'Rekor ini akan dikosongkan ke Rp 0 dan mulai dicatat ulang dari transaksi yang masuk mulai saat ini. (Tidak akan menghapus data riwayat asli Anda)',
                 'Ya, Reset',
                 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30',
                 () => {
-                    localStorage.setItem('reset_rep_' + metric, Date.now());
+                    const now = Date.now();
+                    resetTimes[metric] = now;
+                    // Langsung set tampilan ke Rp 0
+                    const els = metricElMap[metric];
+                    if (els) {
+                        document.getElementById(els.month).innerText = '-';
+                        document.getElementById(els.val).innerText = formatRupiah(0);
+                    }
+                    // Simpan ke Google Sheet
+                    if (isGAS) {
+                        google.script.run.setResetTime(metric, now);
+                    } else if (GAS_URL !== '') {
+                        fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'setResetTime', metric: metric, time: now }) }).catch(() => {});
+                    }
                     showCustomAlert('Berhasil Di-reset', `Rekor ${metricNames[metric]} mulai dilacak ulang.`, 'success');
-                    generateReports(); // Refresh laporan
+                    generateReports();
                 }
             );
         }
@@ -2305,12 +2329,12 @@
         function generateReports() {
             if(transactionsData.length === 0) return;
 
-            // Ambil waktu reset masing-masing rekor dari LocalStorage
+            // Ambil waktu reset masing-masing rekor dari Google Sheet (sudah dimuat ke resetTimes)
             const resets = {
-                inc_high: Number(localStorage.getItem('reset_rep_inc_high')) || 0,
-                inc_low: Number(localStorage.getItem('reset_rep_inc_low')) || 0,
-                exp_high: Number(localStorage.getItem('reset_rep_exp_high')) || 0,
-                exp_low: Number(localStorage.getItem('reset_rep_exp_low')) || 0
+                inc_high: Number(resetTimes.inc_high) || 0,
+                inc_low:  Number(resetTimes.inc_low)  || 0,
+                exp_high: Number(resetTimes.exp_high) || 0,
+                exp_low:  Number(resetTimes.exp_low)  || 0
             };
 
             const dataAgg = { inc_high: {}, inc_low: {}, exp_high: {}, exp_low: {} };
@@ -2319,7 +2343,8 @@
                 const d = new Date(trx.date); if(isNaN(d)) return;
 
                 // Gunakan timestamp akurat (saat trx dibuat) untuk perbandingan reset, atau gunakan tanggal sebagai fallback
-                const trxTime = trx.timestamp ? new Date(trx.timestamp).getTime() : d.getTime();
+                const tsRaw = trx.timestamp ? new Date(trx.timestamp).getTime() : NaN;
+                const trxTime = isNaN(tsRaw) ? d.getTime() : tsRaw;
                 const key = d.getFullYear() + "-" + d.getMonth();
                 const label = monthNames[d.getMonth()] + " " + d.getFullYear();
                 const amt = Number(trx.amount);
