@@ -722,7 +722,7 @@
         function todayLocalDate() { const now = new Date(); return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0'); }
         function todayDisplay() { const now = new Date(); return String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear(); }
         function isoToDisplay(iso) { if(!iso) return ''; const p = iso.split('T')[0].split('-'); if(p.length < 3) return ''; return p[2] + '/' + p[1] + '/' + p[0]; }
-        function safeIsoDate(raw) { if(!raw) return todayLocalDate(); if(typeof raw === 'string') { var s = raw.split('T')[0]; if(/^d{4}-d{2}-d{2}$/.test(s)) return s; } var d = new Date(raw); if(!isNaN(d)) return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); return todayLocalDate(); }
+        function safeIsoDate(raw) { if(!raw) return todayLocalDate(); if(typeof raw === 'string') { var s = raw.split('T')[0]; if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; } var d = new Date(raw); if(!isNaN(d)) return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); return todayLocalDate(); }
         function displayToIso(disp) { if(!disp) return ''; const p = disp.split('/'); if(p.length < 3) return ''; return p[2] + '-' + p[1] + '-' + p[0]; }
         function handleDateInput(el) {
             let v = el.value.replace(/\D/g,'');
@@ -812,17 +812,65 @@
 
         function syncError() { document.getElementById('sync-status').innerHTML = '<i class="fas fa-times text-red-300"></i> Error'; }
 
+        // ─── Antrian sinkronisasi cicilan (piutang & hutang saya) ───
+        // Mencegah race condition: kalau user mencatat beberapa cicilan (mis. membayar
+        // beberapa hari yang lalu berturut-turut) dengan cepat, tiap pembayaran memicu
+        // permintaan simpan ke server sendiri-sendiri. Tanpa antrian, permintaan yang lebih
+        // "lama" bisa saja selesai belakangan dan menimpa data cicilan yang lebih baru,
+        // sehingga cicilan tsb hilang dari menu Piutang/Hutang meski transaksinya tetap
+        // tercatat di Riwayat (riwayat disimpan sebagai baris baru, bukan ditimpa).
+        // Solusi: setiap update cicilan untuk id yang sama dibariskan (di-queue) dan
+        // dikirim satu-per-satu secara berurutan, dan selama masih ada yang tertunda,
+        // fetchData() tidak akan menimpa data lokal item tsb dengan data lama dari server.
+        const cicilanSyncQueue = {};
+        const pendingCicilanSync = { debt: {}, myhutang: {} };
+
+        function queueCicilanSync(kind, action, id, cicilan) {
+            const pendingMap = pendingCicilanSync[kind];
+            pendingMap[id] = (pendingMap[id] || 0) + 1;
+            const key = kind + '_' + id;
+            const prevPromise = cicilanSyncQueue[key] || Promise.resolve();
+            const runSync = () => new Promise((resolve) => {
+                if (isGAS) {
+                    google.script.run.withSuccessHandler(() => resolve()).withFailureHandler(() => { syncError(); resolve(); })[action](id, cicilan);
+                } else if (GAS_URL !== '') {
+                    fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: action, id: id, cicilan: cicilan }) }).then(() => resolve()).catch(() => { syncError(); resolve(); });
+                } else {
+                    resolve();
+                }
+            }).finally(() => { pendingMap[id] = Math.max(0, (pendingMap[id] || 1) - 1); });
+            const nextPromise = prevPromise.then(runSync, runSync);
+            cicilanSyncQueue[key] = nextPromise;
+            return nextPromise;
+        }
+        function syncDebtCicilan(id, cicilan) { return queueCicilanSync('debt', 'updateDebtCicilan', id, cicilan || []); }
+        function syncMyHutangCicilan(id, cicilan) { return queueCicilanSync('myhutang', 'updateMyHutangCicilan', id, cicilan || []); }
+
+        // Selama masih ada sinkronisasi cicilan yang tertunda untuk sebuah id,
+        // pertahankan versi lokal (lebih baru) daripada versi dari server (masih lama).
+        function mergePendingCicilan(kind, serverData) {
+            const pendingMap = pendingCicilanSync[kind];
+            const localData = kind === 'debt' ? debtsData : myHutangData;
+            return (serverData || []).map(item => {
+                if (pendingMap[item.id] > 0) {
+                    const local = (localData || []).find(x => x.id === item.id);
+                    if (local) return local;
+                }
+                return item;
+            });
+        }
+
         function fetchData() {
             document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Sinkron...';
             if (isGAS) {
                 google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_TRX, d); processData(d); }).withFailureHandler(syncError).getTransactions();
-                google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_DEBT, d); processDebts(d); }).withFailureHandler(syncError).getDebts();
-                google.script.run.withSuccessHandler(d => { saveCache(CACHE_KEY_MYHUTANG, d); processMyHutang(d); }).withFailureHandler(syncError).getMyHutang();
+                google.script.run.withSuccessHandler(d => { const merged = mergePendingCicilan('debt', d); saveCache(CACHE_KEY_DEBT, merged); processDebts(merged); }).withFailureHandler(syncError).getDebts();
+                google.script.run.withSuccessHandler(d => { const merged = mergePendingCicilan('myhutang', d); saveCache(CACHE_KEY_MYHUTANG, merged); processMyHutang(merged); }).withFailureHandler(syncError).getMyHutang();
                 google.script.run.withSuccessHandler(d => { if(d) { resetTimes = d; generateReports(); } }).getResetTimes();
             } else if (GAS_URL !== "") {
                 fetch(`${GAS_URL}?action=getTransactions`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_TRX, d); processData(d); }).catch(syncError);
-                fetch(`${GAS_URL}?action=getDebts`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_DEBT, d); processDebts(d); }).catch(syncError);
-                fetch(`${GAS_URL}?action=getMyHutang`).then(res => res.json()).then(d => { saveCache(CACHE_KEY_MYHUTANG, d); processMyHutang(d); }).catch(() => { processMyHutang(loadCache(CACHE_KEY_MYHUTANG) || [], true); });
+                fetch(`${GAS_URL}?action=getDebts`).then(res => res.json()).then(d => { const merged = mergePendingCicilan('debt', d); saveCache(CACHE_KEY_DEBT, merged); processDebts(merged); }).catch(syncError);
+                fetch(`${GAS_URL}?action=getMyHutang`).then(res => res.json()).then(d => { const merged = mergePendingCicilan('myhutang', d); saveCache(CACHE_KEY_MYHUTANG, merged); processMyHutang(merged); }).catch(() => { processMyHutang(loadCache(CACHE_KEY_MYHUTANG) || [], true); });
                 fetch(`${GAS_URL}?action=getResetTimes`).then(res => res.json()).then(d => { if(d) { resetTimes = d; generateReports(); } }).catch(() => {});
             } else {
                 // Standalone mode: langsung dari cache
@@ -1350,8 +1398,7 @@
                     processDebts(debtsData, true);
                     debtsData.forEach(d => {
                         if (!(d.cicilan || []).some(c => c.trxId === editId)) return;
-                        if (isGAS) google.script.run.updateDebtCicilan(d.id, d.cicilan || []);
-                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                        syncDebtCicilan(d.id, d.cicilan || []);
                     });
                 }
 
@@ -1372,8 +1419,7 @@
                     processMyHutang(myHutangData, true);
                     myHutangData.forEach(d => {
                         if (!(d.cicilan || []).some(c => c.trxId === editId)) return;
-                        if (isGAS) google.script.run.updateMyHutangCicilan(d.id, d.cicilan || []);
-                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                        syncMyHutangCicilan(d.id, d.cicilan || []);
                     });
                 }
 
@@ -1497,8 +1543,7 @@
                             saveCache(CACHE_KEY_DEBT, debtsData);
                             saveDebtTrxMap();
                             processDebts(debtsData, true);
-                            if (isGAS) google.script.run.updateDebtCicilan(paidDebt.id, paidDebt.cicilan || []);
-                            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: paidDebt.id, cicilan: paidDebt.cicilan || [] }) }).catch(() => {});
+                            syncDebtCicilan(paidDebt.id, paidDebt.cicilan || []);
                         }
                     }
 
@@ -1521,8 +1566,7 @@
                             saveCache(CACHE_KEY_MYHUTANG, myHutangData);
                             saveMhTrxMap();
                             processMyHutang(myHutangData, true);
-                            if (isGAS) google.script.run.updateMyHutangCicilan(paidMh.id, paidMh.cicilan || []);
-                            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: paidMh.id, cicilan: paidMh.cicilan || [] }) }).catch(() => {});
+                            syncMyHutangCicilan(paidMh.id, paidMh.cicilan || []);
                         }
                     }
 
@@ -1542,8 +1586,7 @@
                             saveCache(CACHE_KEY_DEBT, debtsData);
                             processDebts(debtsData, true);
                             debtsData.forEach(d => {
-                                if (isGAS) google.script.run.updateDebtCicilan(d.id, d.cicilan || []);
-                                else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                                syncDebtCicilan(d.id, d.cicilan || []);
                             });
                         }
                     }
@@ -1564,8 +1607,7 @@
                             saveCache(CACHE_KEY_MYHUTANG, myHutangData);
                             processMyHutang(myHutangData, true);
                             myHutangData.forEach(d => {
-                                if (isGAS) google.script.run.updateMyHutangCicilan(d.id, d.cicilan || []);
-                                else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: d.id, cicilan: d.cicilan || [] }) }).catch(() => {});
+                                syncMyHutangCicilan(d.id, d.cicilan || []);
                             });
                         }
                     }
@@ -1757,8 +1799,7 @@
             processDebts(debtsData, true);
             // Sinkronkan cicilan piutang ke server (Sheet Piutang) agar tidak hilang saat fetchData berikutnya
             const updatedDebt = debtsData.find(d => d.id === id);
-            if (isGAS) google.script.run.updateDebtCicilan(id, updatedDebt.cicilan || []);
-            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: id, cicilan: updatedDebt.cicilan || [] }) }).catch(() => {});
+            syncDebtCicilan(id, updatedDebt.cicilan || []);
             // Catat ke dompet sebagai Pemasukan (simpan trxId agar bisa dihapus bersama)
             const trx = { id: trxId, type: 'Pemasukan', amount: amount, category: 'Bayar Piutang', date: newCicilan.date, note: 'Cicilan piutang dari ' + debt.name + (newCicilan.note ? ' - ' + newCicilan.note : ''), timestamp: new Date().toISOString() };
             optimisticSaveTrx(trx, true);
@@ -1810,8 +1851,7 @@
             processMyHutang(myHutangData, true);
             // Sinkronkan cicilan hutang ke server (Sheet HutangSaya) agar tidak hilang saat fetchData berikutnya
             const updatedMh = myHutangData.find(d => d.id === id);
-            if (isGAS) google.script.run.updateMyHutangCicilan(id, updatedMh.cicilan || []);
-            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: id, cicilan: updatedMh.cicilan || [] }) }).catch(() => {});
+            syncMyHutangCicilan(id, updatedMh.cicilan || []);
             // Catat ke dompet sebagai Pengeluaran (simpan trxId agar bisa dihapus bersama)
             const trx = { id: trxId, type: 'Pengeluaran', amount: amount, category: 'Bayar Hutang', date: newCicilan.date, note: 'Cicilan hutang ke ' + item.name + (newCicilan.note ? ' - ' + newCicilan.note : ''), timestamp: new Date().toISOString() };
             optimisticSaveTrx(trx, true);
@@ -1886,8 +1926,7 @@
                     // Sync cicilan ke server (GAS)
                     const updatedDebt = debtsData.find(d => d.id === parentId);
                     if (updatedDebt) {
-                        if (isGAS) google.script.run.updateDebtCicilan(parentId, updatedDebt.cicilan || []);
-                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: parentId, cicilan: updatedDebt.cicilan || [] }) }).catch(() => {});
+                        syncDebtCicilan(parentId, updatedDebt.cicilan || []);
                     }
                 } else {
                     // Cari trxId dari cicilan sebelum dihapus
@@ -1910,8 +1949,7 @@
                     // Sync cicilan ke server (GAS)
                     const updatedItem = myHutangData.find(d => d.id === parentId);
                     if (updatedItem) {
-                        if (isGAS) google.script.run.updateMyHutangCicilan(parentId, updatedItem.cicilan || []);
-                        else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: parentId, cicilan: updatedItem.cicilan || [] }) }).catch(() => {});
+                        syncMyHutangCicilan(parentId, updatedItem.cicilan || []);
                     }
                 }
 
