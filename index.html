@@ -1755,6 +1755,10 @@
             });
             saveCache(CACHE_KEY_DEBT, debtsData);
             processDebts(debtsData, true);
+            // Sinkronkan cicilan piutang ke server (Sheet Piutang) agar tidak hilang saat fetchData berikutnya
+            const updatedDebt = debtsData.find(d => d.id === id);
+            if (isGAS) google.script.run.updateDebtCicilan(id, updatedDebt.cicilan || []);
+            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateDebtCicilan', id: id, cicilan: updatedDebt.cicilan || [] }) }).catch(() => {});
             // Catat ke dompet sebagai Pemasukan (simpan trxId agar bisa dihapus bersama)
             const trx = { id: trxId, type: 'Pemasukan', amount: amount, category: 'Bayar Piutang', date: newCicilan.date, note: 'Cicilan piutang dari ' + debt.name + (newCicilan.note ? ' - ' + newCicilan.note : ''), timestamp: new Date().toISOString() };
             optimisticSaveTrx(trx, true);
@@ -1804,6 +1808,10 @@
             });
             saveCache(CACHE_KEY_MYHUTANG, myHutangData);
             processMyHutang(myHutangData, true);
+            // Sinkronkan cicilan hutang ke server (Sheet HutangSaya) agar tidak hilang saat fetchData berikutnya
+            const updatedMh = myHutangData.find(d => d.id === id);
+            if (isGAS) google.script.run.updateMyHutangCicilan(id, updatedMh.cicilan || []);
+            else if (GAS_URL !== '') fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMyHutangCicilan', id: id, cicilan: updatedMh.cicilan || [] }) }).catch(() => {});
             // Catat ke dompet sebagai Pengeluaran (simpan trxId agar bisa dihapus bersama)
             const trx = { id: trxId, type: 'Pengeluaran', amount: amount, category: 'Bayar Hutang', date: newCicilan.date, note: 'Cicilan hutang ke ' + item.name + (newCicilan.note ? ' - ' + newCicilan.note : ''), timestamp: new Date().toISOString() };
             optimisticSaveTrx(trx, true);
