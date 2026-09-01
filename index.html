@@ -1200,11 +1200,21 @@
             const periodLabel = monthNames[targetM] + ' ' + targetY;
 
             // Ambil data riwayat bulan yang dipilih
-            const trxPeriod = transactionsData.filter(t => {
+            let trxPeriod = transactionsData.filter(t => {
                 if (t.category === 'Rekap Sistem') return false;
                 const d = new Date(t.date);
                 return d.getMonth() === targetM && d.getFullYear() === targetY;
-            }).sort((a, b) => new Date(a.date) - new Date(b.date));
+            });
+
+            // Urutkan PERSIS mengikuti pengaturan sort yang sedang aktif di halaman Riwayat Transaksi (historySort),
+            // supaya urutan list di PDF sama dengan urutan yang terlihat di layar
+            if(historySort === 'date_desc') trxPeriod.sort((a,b) => new Date(b.date) - new Date(a.date));
+            else if(historySort === 'date_asc') trxPeriod.sort((a,b) => new Date(a.date) - new Date(b.date));
+            else if(historySort === 'amount_desc') trxPeriod.sort((a,b) => b.amount - a.amount);
+            else if(historySort === 'amount_asc') trxPeriod.sort((a,b) => a.amount - b.amount);
+            else if(historySort === 'type_expense') trxPeriod = trxPeriod.filter(t => t.type === 'Pengeluaran').sort((a,b) => new Date(b.date) - new Date(a.date));
+            else if(historySort === 'type_income') trxPeriod = trxPeriod.filter(t => t.type === 'Pemasukan').sort((a,b) => new Date(b.date) - new Date(a.date));
+            else trxPeriod.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             if (trxPeriod.length === 0) {
                 showCustomAlert('Tidak Ada Data', `Tidak ada riwayat transaksi untuk ${periodLabel}.`, 'error');
