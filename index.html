@@ -1121,11 +1121,15 @@
             transactionsData = (data || []).map(trx => ({ ...trx, date: safeIsoDate(trx.date) }));
             if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
             const currM = new Date().getMonth(), currY = new Date().getFullYear(); let prevM = currM - 1, prevY = currY; if (prevM < 0) { prevM = 11; prevY--; }
-            let currInc = 0, currExp = 0, prevInc = 0, prevExp = 0; let currTrx = [];
+            let currInc = 0, currExp = 0, prevInc = 0, prevExp = 0, allTimeBalance = 0; let currTrx = [];
 
-            transactionsData.forEach(trx => { const d = new Date(trx.date); const amt = Number(trx.amount); const isRekap = trx.category === 'Rekap Sistem'; if (d.getMonth() === currM && d.getFullYear() === currY) { if (!isRekap) { if (trx.type === 'Pemasukan') currInc += amt; else currExp += amt; } currTrx.push(trx); } else if (d.getMonth() === prevM && d.getFullYear() === prevY) { if (!isRekap) { if (trx.type === 'Pemasukan') prevInc += amt; else prevExp += amt; } } });
+            // allTimeBalance dihitung dari SELURUH riwayat transaksi (termasuk yang sudah dikompres jadi "Rekap Sistem")
+            // agar Sisa Uang Dompet tidak ikut ter-reset ke Rp 0 saat berganti bulan; nilainya akan terus terbawa (carry-over)
+            // dari bulan-bulan sebelumnya seperti saldo dompet asli. Pemasukan & Pengeluaran bulan berjalan (currInc/currExp)
+            // tetap dihitung terpisah khusus untuk statistik "Bulan Ini" dan TIDAK diubah agar fungsi lain tetap sama persis.
+            transactionsData.forEach(trx => { const d = new Date(trx.date); const amt = Number(trx.amount); const isRekap = trx.category === 'Rekap Sistem'; if (trx.type === 'Pemasukan') allTimeBalance += amt; else allTimeBalance -= amt; if (d.getMonth() === currM && d.getFullYear() === currY) { if (!isRekap) { if (trx.type === 'Pemasukan') currInc += amt; else currExp += amt; } currTrx.push(trx); } else if (d.getMonth() === prevM && d.getFullYear() === prevY) { if (!isRekap) { if (trx.type === 'Pemasukan') prevInc += amt; else prevExp += amt; } } });
 
-            document.getElementById('total-balance').innerText = formatRupiah(currInc - currExp); document.getElementById('total-income').innerText = formatRupiah(currInc);
+            document.getElementById('total-balance').innerText = formatRupiah(allTimeBalance); document.getElementById('total-income').innerText = formatRupiah(currInc);
             const expEl = document.getElementById('total-expense'), warnEl = document.getElementById('budget-warning'); expEl.innerText = formatRupiah(currExp);
             if (budgetLimit > 0 && currExp > budgetLimit) { expEl.classList.add('text-red-300'); warnEl.classList.remove('hidden'); } else { expEl.classList.remove('text-red-300'); warnEl.classList.add('hidden'); }
 
