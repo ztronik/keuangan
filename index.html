@@ -908,7 +908,7 @@
             processDebts(debtsData, true);
             // Kurangi saldo dompet: catat sebagai pengeluaran "Piutang Keluar"
             const trxId = 'trx_debt_' + Date.now();
-            const trx = { id: trxId, type: 'Pengeluaran', amount: newDebt.amount, category: 'Piutang Keluar', date: newDebt.date, note: 'Piutang ke ' + newDebt.name, timestamp: new Date().toISOString() };
+            const trx = { id: trxId, type: 'Pengeluaran', amount: newDebt.amount, category: 'Piutang Keluar', date: newDebt.date, note: 'Piutang ke ' + newDebt.name + trxNoteSuffix(newDebt.note), timestamp: new Date().toISOString() };
             // Simpan trxIdUtama ke debt agar sinkronisasi riwayat bisa melacaknya
             debtsData = debtsData.map(d => d.id === newDebt.id ? { ...d, trxIdUtama: trxId } : d);
             saveCache(CACHE_KEY_DEBT, debtsData);
@@ -921,7 +921,7 @@
             processMyHutang(myHutangData, true);
             // Tambah saldo dompet: catat sebagai pemasukan "Hutang Masuk"
             const trxId = 'trx_mh_' + Date.now();
-            const trx = { id: trxId, type: 'Pemasukan', amount: newItem.amount, category: 'Hutang Masuk', date: newItem.date, note: 'Hutang dari ' + newItem.name, timestamp: new Date().toISOString() };
+            const trx = { id: trxId, type: 'Pemasukan', amount: newItem.amount, category: 'Hutang Masuk', date: newItem.date, note: 'Hutang dari ' + newItem.name + trxNoteSuffix(newItem.note), timestamp: new Date().toISOString() };
             // Simpan trxIdUtama ke myHutang agar sinkronisasi riwayat bisa melacaknya
             myHutangData = myHutangData.map(d => d.id === newItem.id ? { ...d, trxIdUtama: trxId } : d);
             saveCache(CACHE_KEY_MYHUTANG, myHutangData);
@@ -966,6 +966,10 @@
         // ─── Auto-hapus piutang/hutang LUNAS dari menu Hutang Piutang setelah N hari ───
         // Hanya menghapus dari daftar Piutang & Hutang Saya. Riwayat transaksi & saldo dompet TIDAK disentuh.
         const LUNAS_RETENTION_DAYS = 3;
+        // Tambahan catatan di keterangan Riwayat: "Piutang ke JUREDI - Pinjaman untuk modal"
+        function trxNoteSuffix(note) { const n = String(note || '').trim(); return n ? ' - ' + n : ''; }
+        // Cocokkan note riwayat dengan prefix + nama (persis, atau diikuti " - catatan")
+        function noteMatchesName(note, prefix, name) { const n = String(note || ''); const base = prefix + name; return n === base || n.startsWith(base + ' - '); }
         function isLunasExpired(d) {
             if (!d || d.status !== 'Lunas' || !d.paidDate) return false;
             const m = String(d.paidDate).split('T')[0].match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -1380,8 +1384,7 @@
             if (!trx || trx.category !== 'Piutang Keluar') return null;
             const notePrefix = 'Piutang ke ';
             if (!String(trx.note || '').startsWith(notePrefix)) return null;
-            const namaFromNote = String(trx.note).slice(notePrefix.length);
-            return debtsData.find(d => d.name === namaFromNote && Number(d.amount) === Number(trx.amount) && safeIsoDate(d.date) === safeIsoDate(trx.date)) || null;
+            return debtsData.find(d => noteMatchesName(trx.note, notePrefix, d.name) && Number(d.amount) === Number(trx.amount) && safeIsoDate(d.date) === safeIsoDate(trx.date)) || null;
         }
         function findMyHutangByMainTrxId(trxId) {
             const byId = myHutangData.find(d => d.trxIdUtama === trxId);
@@ -1390,8 +1393,7 @@
             if (!trx || trx.category !== 'Hutang Masuk') return null;
             const notePrefix = 'Hutang dari ';
             if (!String(trx.note || '').startsWith(notePrefix)) return null;
-            const namaFromNote = String(trx.note).slice(notePrefix.length);
-            return myHutangData.find(d => d.name === namaFromNote && Number(d.amount) === Number(trx.amount) && safeIsoDate(d.date) === safeIsoDate(trx.date)) || null;
+            return myHutangData.find(d => noteMatchesName(trx.note, notePrefix, d.name) && Number(d.amount) === Number(trx.amount) && safeIsoDate(d.date) === safeIsoDate(trx.date)) || null;
         }
 
         function submitTransaction(e) {
@@ -1556,11 +1558,7 @@
                         let paidDebt = debtsData.find(d => d.paidTrxId === id);
                         // Fallback untuk data lama: deteksi via note pattern
                         if (!paidDebt && trx && trx.category === 'Bayar Piutang') {
-                            const noteMatch = String(trx.note || '').match(/^Piutang lunas dari (.+)$/);
-                            if (noteMatch) {
-                                const debtName = noteMatch[1];
-                                paidDebt = debtsData.find(d => d.name === debtName && d.status === 'Lunas' && !d.paidTrxId);
-                            }
+                            paidDebt = debtsData.find(d => noteMatchesName(trx.note, 'Piutang lunas dari ', d.name) && d.status === 'Lunas' && !d.paidTrxId);
                         }
                         if (paidDebt) {
                             debtsData = debtsData.map(d => d.id === paidDebt.id
@@ -1579,11 +1577,7 @@
                         let paidMh = myHutangData.find(d => d.paidTrxId === id);
                         // Fallback untuk data lama: deteksi via note pattern
                         if (!paidMh && trx && trx.category === 'Bayar Hutang') {
-                            const noteMatch = String(trx.note || '').match(/^Bayar hutang ke (.+)$/);
-                            if (noteMatch) {
-                                const mhName = noteMatch[1];
-                                paidMh = myHutangData.find(d => d.name === mhName && d.status === 'Lunas' && !d.paidTrxId);
-                            }
+                            paidMh = myHutangData.find(d => noteMatchesName(trx.note, 'Bayar hutang ke ', d.name) && d.status === 'Lunas' && !d.paidTrxId);
                         }
                         if (paidMh) {
                             myHutangData = myHutangData.map(d => d.id === paidMh.id
@@ -1669,7 +1663,7 @@
                 saveDebtTrxMap();
                 processDebts(debtsData, true);
                 // Tambah saldo: catat sebagai pemasukan "Bayar Piutang"
-                const trx = { id: paidTrxId, type: 'Pemasukan', amount: debt.amount, category: 'Bayar Piutang', date: paidDate, note: 'Piutang lunas dari ' + debt.name, timestamp: new Date().toISOString() };
+                const trx = { id: paidTrxId, type: 'Pemasukan', amount: debt.amount, category: 'Bayar Piutang', date: paidDate, note: 'Piutang lunas dari ' + debt.name + trxNoteSuffix(debt.note), timestamp: new Date().toISOString() };
                 optimisticSaveTrx(trx, true);
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Proses...';
                 if (isGAS) google.script.run.withSuccessHandler(fetchData).payDebt(id);
@@ -1736,7 +1730,7 @@
                 saveMhTrxMap();
                 processMyHutang(myHutangData, true);
                 // Kurangi saldo: catat sebagai pengeluaran "Bayar Hutang"
-                const trx = { id: paidTrxId, type: 'Pengeluaran', amount: item.amount, category: 'Bayar Hutang', date: paidDate, note: 'Bayar hutang ke ' + item.name, timestamp: new Date().toISOString() };
+                const trx = { id: paidTrxId, type: 'Pengeluaran', amount: item.amount, category: 'Bayar Hutang', date: paidDate, note: 'Bayar hutang ke ' + item.name + trxNoteSuffix(item.note), timestamp: new Date().toISOString() };
                 optimisticSaveTrx(trx, true);
                 document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Proses...';
                 if (isGAS) google.script.run.withSuccessHandler(fetchData).payMyHutang(id);
