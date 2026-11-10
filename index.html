@@ -963,8 +963,20 @@
             renderDebtList();
             if(!silent) document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Sinkron';
         }
+        // ─── Auto-hapus piutang/hutang LUNAS dari menu Hutang Piutang setelah N hari ───
+        // Hanya menghapus dari daftar Piutang & Hutang Saya. Riwayat transaksi & saldo dompet TIDAK disentuh.
+        const LUNAS_RETENTION_DAYS = 3;
+        function isLunasExpired(d) {
+            if (!d || d.status !== 'Lunas' || !d.paidDate) return false;
+            const m = String(d.paidDate).split('T')[0].match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return false;
+            const paid = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+            const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            return Math.round((today - paid) / 86400000) >= LUNAS_RETENTION_DAYS;
+        }
         function getDebtPaid(debt) { return (debt.cicilan || []).reduce((s,c) => s + Number(c.amount), 0); }
         function renderDebtList() {
+            debtsData = debtsData.filter(d => !isLunasExpired(d));
             const container = document.getElementById('all-debts'); let totalHutang = 0; let totalLunas = 0;
             debtsData.forEach(d => {
                 const sisa = Number(d.amount) - getDebtPaid(d);
@@ -1042,6 +1054,7 @@
         }
         function getMyHutangPaid(item) { return (item.cicilan || []).reduce((s,c) => s + Number(c.amount), 0); }
         function renderMyHutangList() {
+            myHutangData = myHutangData.filter(d => !isLunasExpired(d));
             const container = document.getElementById('all-myhutang');
             if (!container) return;
             let totalBelumLunas = 0; let totalLunas = 0;
@@ -1368,7 +1381,7 @@
             const notePrefix = 'Piutang ke ';
             if (!String(trx.note || '').startsWith(notePrefix)) return null;
             const namaFromNote = String(trx.note).slice(notePrefix.length);
-            return debtsData.find(d => d.name === namaFromNote) || null;
+            return debtsData.find(d => d.name === namaFromNote && Number(d.amount) === Number(trx.amount) && safeIsoDate(d.date) === safeIsoDate(trx.date)) || null;
         }
         function findMyHutangByMainTrxId(trxId) {
             const byId = myHutangData.find(d => d.trxIdUtama === trxId);
@@ -1378,7 +1391,7 @@
             const notePrefix = 'Hutang dari ';
             if (!String(trx.note || '').startsWith(notePrefix)) return null;
             const namaFromNote = String(trx.note).slice(notePrefix.length);
-            return myHutangData.find(d => d.name === namaFromNote) || null;
+            return myHutangData.find(d => d.name === namaFromNote && Number(d.amount) === Number(trx.amount) && safeIsoDate(d.date) === safeIsoDate(trx.date)) || null;
         }
 
         function submitTransaction(e) {
@@ -1405,7 +1418,7 @@
                     const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
                     const isNowLunas = totalPaid >= Number(d.amount);
                     debtCicilanChanged = true;
-                    return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || iso) : '' };
+                    return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || todayLocalDate()) : '' };
                 });
                 if (debtCicilanChanged) {
                     saveCache(CACHE_KEY_DEBT, debtsData);
@@ -1426,7 +1439,7 @@
                     const totalPaid = cicilan.reduce((s,c) => s + Number(c.amount), 0);
                     const isNowLunas = totalPaid >= Number(d.amount);
                     mhCicilanChanged = true;
-                    return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || iso) : '' };
+                    return { ...d, cicilan, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || todayLocalDate()) : '' };
                 });
                 if (mhCicilanChanged) {
                     saveCache(CACHE_KEY_MYHUTANG, myHutangData);
@@ -1449,7 +1462,7 @@
                         if (d.id !== changedDebt.id) return d;
                         const totalPaid = (d.cicilan || []).reduce((s,c) => s + Number(c.amount), 0);
                         const isNowLunas = totalPaid >= newAmt;
-                        return { ...d, amount: newAmt, date: data.date, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || iso) : '' };
+                        return { ...d, amount: newAmt, date: data.date, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || todayLocalDate()) : '' };
                     });
                     saveCache(CACHE_KEY_DEBT, debtsData);
                     processDebts(debtsData, true);
@@ -1468,7 +1481,7 @@
                         if (d.id !== changedMh.id) return d;
                         const totalPaid = (d.cicilan || []).reduce((s,c) => s + Number(c.amount), 0);
                         const isNowLunas = totalPaid >= newAmt;
-                        return { ...d, amount: newAmt, date: data.date, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || iso) : '' };
+                        return { ...d, amount: newAmt, date: data.date, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || todayLocalDate()) : '' };
                     });
                     saveCache(CACHE_KEY_MYHUTANG, myHutangData);
                     processMyHutang(myHutangData, true);
@@ -1648,7 +1661,7 @@
         function markAsPaid(id) {
             showCustomConfirm('Tandai Lunas', 'Uang hutang sudah Anda terima? (Otomatis menambah saldo pemasukan)', 'Terima Lunas', 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30', () => {
                 const debt = debtsData.find(d => d.id === id); if (!debt) return;
-                const paidDate = new Date().toISOString().split('T')[0];
+                const paidDate = todayLocalDate();
                 const paidTrxId = 'trx_paid_' + Date.now();
                 // Optimistic: update status lokal langsung + simpan paidTrxId
                 debtsData = debtsData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: paidDate, paidTrxId: paidTrxId } : d);
@@ -1716,7 +1729,7 @@
         function payMyHutang(id) {
             const item = myHutangData.find(d => d.id === id); if (!item) return;
             showCustomConfirm('Bayar Hutang', `Konfirmasi pembayaran hutang ke "${item.name}" sebesar ${formatRupiah(item.amount)}?\n(Saldo dompet akan berkurang)`, 'Bayar Sekarang', 'bg-red-500 hover:bg-red-600 shadow-red-500/30', () => {
-                const paidDate = new Date().toISOString().split('T')[0];
+                const paidDate = todayLocalDate();
                 const paidTrxId = 'trx_paymh_' + Date.now();
                 myHutangData = myHutangData.map(d => d.id === id ? { ...d, status: 'Lunas', paidDate: paidDate, paidTrxId: paidTrxId } : d);
                 saveCache(CACHE_KEY_MYHUTANG, myHutangData);
@@ -1807,7 +1820,7 @@
                 const cicilan = [...(d.cicilan || []), newCicilan];
                 const totalPaid = cicilan.reduce((s, c) => s + Number(c.amount), 0);
                 const isNowLunas = totalPaid >= Number(d.amount);
-                return { ...d, cicilan, status: isNowLunas ? 'Lunas' : d.status, paidDate: isNowLunas ? newCicilan.date : d.paidDate };
+                return { ...d, cicilan, status: isNowLunas ? 'Lunas' : d.status, paidDate: isNowLunas ? todayLocalDate() : d.paidDate };
             });
             saveCache(CACHE_KEY_DEBT, debtsData);
             processDebts(debtsData, true);
@@ -1859,7 +1872,7 @@
                 const cicilan = [...(d.cicilan || []), newCicilan];
                 const totalPaid = cicilan.reduce((s, c) => s + Number(c.amount), 0);
                 const isNowLunas = totalPaid >= Number(d.amount);
-                return { ...d, cicilan, status: isNowLunas ? 'Lunas' : d.status, paidDate: isNowLunas ? newCicilan.date : d.paidDate };
+                return { ...d, cicilan, status: isNowLunas ? 'Lunas' : d.status, paidDate: isNowLunas ? todayLocalDate() : d.paidDate };
             });
             saveCache(CACHE_KEY_MYHUTANG, myHutangData);
             processMyHutang(myHutangData, true);
@@ -2014,7 +2027,7 @@
                     if (d.id !== id) return d;
                     const totalPaid = (d.cicilan || []).reduce((s, c) => s + Number(c.amount), 0);
                     const isNowLunas = totalPaid >= newAmount;
-                    return { ...d, amount: newAmount, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || new Date().toISOString().split('T')[0]) : '' };
+                    return { ...d, amount: newAmount, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || todayLocalDate()) : '' };
                 });
                 saveCache(CACHE_KEY_DEBT, debtsData);
                 processDebts(debtsData, true);
@@ -2043,7 +2056,7 @@
                     if (d.id !== id) return d;
                     const totalPaid = (d.cicilan || []).reduce((s, c) => s + Number(c.amount), 0);
                     const isNowLunas = totalPaid >= newAmount;
-                    return { ...d, amount: newAmount, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || new Date().toISOString().split('T')[0]) : '' };
+                    return { ...d, amount: newAmount, status: isNowLunas ? 'Lunas' : 'Belum Lunas', paidDate: isNowLunas ? (d.paidDate || todayLocalDate()) : '' };
                 });
                 saveCache(CACHE_KEY_MYHUTANG, myHutangData);
                 processMyHutang(myHutangData, true);
